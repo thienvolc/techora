@@ -18,11 +18,27 @@ spring:
     redis:
       host: localhost
       port: 6379
+      connect-timeout: 1s
+      timeout: 1s
+      lettuce:
+        shutdown-timeout: 100ms
   kafka:
     bootstrap-servers: localhost:9092
     consumer:
       group-id: techora-api-${random.uuid}
       auto-offset-reset: latest
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,caches
+  endpoint:
+    health:
+      show-details: when_authorized
+  metrics:
+    enable:
+      cache: true
 
 security:
   jwt:
@@ -30,6 +46,24 @@ security:
     expiration-seconds: 3600
 
 app:
+  cache:
+    local:
+      maximum-size: 10000
+    ttl:
+      default-ttl: 10m
+      product-detail: 10m
+      product-listing: 60s
+      active-categories: 30m
+      local-product-detail: 60s
+      local-product-listing: 30s
+      local-active-categories: 5m
+  rate-limit:
+    browse:
+      enabled: true
+      limit-for-period: 120
+      limit-refresh-period: 1m
+      timeout-duration: 0s
+      maximum-clients: 10000
   events:
     mode: local
     topic: techora.events
@@ -48,3 +82,12 @@ app:
       step-backoff-seconds: 5
   runtime:
     instance-id: ${HOSTNAME:${random.uuid}}
+
+payment:
+  providers:
+    vnpay:
+      terminal-code: ${VNPAY_TMN_CODE:DEMO}
+      hash-secret: ${VNPAY_HASH_SECRET:DEMO}
+      pay-url: ${VNPAY_PAY_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+      return-url: ${VNPAY_RETURN_URL:http://localhost:8080/api/v1/payments/vnpay/return/%s}
+      payment-timeout-minutes: ${VNPAY_PAYMENT_TIMEOUT_MINUTES:15}
