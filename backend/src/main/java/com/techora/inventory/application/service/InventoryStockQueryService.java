@@ -16,7 +16,6 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class InventoryStockQueryService {
-
     private final InventoryItemRepository inventoryItemRepository;
 
     @Transactional(readOnly = true)

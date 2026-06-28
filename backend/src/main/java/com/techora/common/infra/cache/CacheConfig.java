@@ -3,11 +3,13 @@ package com.techora.common.infra.cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.techora.common.infra.config.prop.CacheLocalProperties;
 import com.techora.common.infra.config.prop.CacheTtlProperties;
+import com.techora.common.infra.config.prop.RedisCacheBypassProperties;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.caffeine.CaffeineCacheManager;
+import org.springframework.cache.interceptor.CacheErrorHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -24,7 +26,8 @@ import java.util.Map;
 @EnableCaching
 @EnableConfigurationProperties({
         CacheLocalProperties.class,
-        CacheTtlProperties.class
+        CacheTtlProperties.class,
+        RedisCacheBypassProperties.class
 })
 public class CacheConfig {
 
@@ -32,9 +35,16 @@ public class CacheConfig {
     @Primary
     public CacheManager cacheManager(CaffeineCacheManager caffeineCacheManager,
                                      RedisCacheManager redisCacheManager,
-                                     MeterRegistry meterRegistry) {
+                                     MeterRegistry meterRegistry,
+                                     RedisCacheAvailability redisCacheAvailability,
+                                     CacheErrorHandler cacheErrorHandler) {
 
-        return new TwoLevelCacheManager(caffeineCacheManager, redisCacheManager, meterRegistry);
+        return new TwoLevelCacheManager(
+                caffeineCacheManager,
+                redisCacheManager,
+                meterRegistry,
+                redisCacheAvailability,
+                cacheErrorHandler);
     }
 
     @Bean
@@ -43,6 +53,7 @@ public class CacheConfig {
 
         CaffeineCacheManager cacheManager = new CaffeineCacheManager();
         cacheManager.setAllowNullValues(false);
+        cacheManager.setCacheNames(CacheNames.all());
         cacheManager.registerCustomCache(
                 CacheNames.PRODUCT_DETAIL_BY_SLUG,
                 caffeine(cacheTtlProperties.localProductDetail(), cacheLocalProperties.maximumSize()).build());
@@ -73,6 +84,7 @@ public class CacheConfig {
                         CacheNames.PRODUCT_LISTING, defaultConfig.entryTtl(cacheTtlProperties.productListing()),
                         CacheNames.ACTIVE_CATEGORIES, defaultConfig.entryTtl(cacheTtlProperties.activeCategories())
                 ))
+                .disableCreateOnMissingCache()
                 .build();
     }
 

@@ -2,6 +2,7 @@ package com.techora.payment.domain.entity;
 
 import com.techora.common.application.aop.BusinessException;
 import com.techora.common.application.constant.ResponseCode;
+import com.techora.payment.domain.valueobject.PaymentReconciliationReason;
 import com.techora.payment.domain.valueobject.PaymentStatus;
 import lombok.Builder;
 import lombok.Getter;
@@ -17,7 +18,7 @@ public class Payment extends AggregateRoot<UUID> {
     private final UUID userId;
     private final String username;
     private final BigDecimal amount;
-    private final String providerReference;
+    private final Instant paymentWindowExpiresAt;
     private final Instant createdAt;
 
     private PaymentStatus status;
@@ -30,7 +31,7 @@ public class Payment extends AggregateRoot<UUID> {
                     String username,
                     BigDecimal amount,
                     PaymentStatus status,
-                    String providerReference,
+                    Instant paymentWindowExpiresAt,
                     Instant createdAt,
                     Instant updatedAt) {
 
@@ -40,7 +41,7 @@ public class Payment extends AggregateRoot<UUID> {
         this.username = username;
         this.amount = amount;
         this.status = status;
-        this.providerReference = providerReference;
+        this.paymentWindowExpiresAt = paymentWindowExpiresAt;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -49,7 +50,7 @@ public class Payment extends AggregateRoot<UUID> {
                                         UUID userId,
                                         String username,
                                         BigDecimal amount,
-                                        String providerReference,
+                                        Instant paymentWindowExpiresAt,
                                         Instant now) {
 
         return Payment.builder()
@@ -58,7 +59,7 @@ public class Payment extends AggregateRoot<UUID> {
                 .username(username)
                 .amount(amount)
                 .status(PaymentStatus.PENDING)
-                .providerReference(providerReference)
+                .paymentWindowExpiresAt(paymentWindowExpiresAt)
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
@@ -78,6 +79,68 @@ public class Payment extends AggregateRoot<UUID> {
         }
         changeStatus(PaymentStatus.FAILED, now);
         return true;
+    }
+
+    public boolean markExpired(Instant now) {
+        if (status == PaymentStatus.EXPIRED) {
+            return false;
+        }
+        changeStatus(PaymentStatus.EXPIRED, now);
+        return true;
+    }
+
+    public boolean markCancelled(Instant now) {
+        if (status == PaymentStatus.CANCELLED) {
+            return false;
+        }
+        changeStatus(PaymentStatus.CANCELLED, now);
+        return true;
+    }
+
+    public boolean markReconciliationRequired(Instant now) {
+        if (status == PaymentStatus.RECONCILIATION_REQUIRED) {
+            return false;
+        }
+        changeStatus(PaymentStatus.RECONCILIATION_REQUIRED, now);
+        return true;
+    }
+
+    public boolean isExpired(Instant now) {
+        return status == PaymentStatus.PENDING && !paymentWindowExpiresAt.isAfter(now);
+    }
+
+    public boolean isPending() {
+        return status == PaymentStatus.PENDING;
+    }
+
+    public boolean isPaid() {
+        return status == PaymentStatus.PAID;
+    }
+
+    public boolean isProviderSuccessAlreadyHandled() {
+        return status == PaymentStatus.PAID
+                || status == PaymentStatus.RECONCILIATION_REQUIRED
+                || status == PaymentStatus.REFUNDED;
+    }
+
+    public boolean canAutoConfirm(Instant now) {
+        return status == PaymentStatus.PENDING && paymentWindowExpiresAt.isAfter(now);
+    }
+
+    public boolean canFailFromProvider() {
+        return status == PaymentStatus.PENDING;
+    }
+
+    public PaymentReconciliationReason reconciliationReasonForSuccessfulProviderResult(Instant now) {
+        if (status == PaymentStatus.PENDING && !paymentWindowExpiresAt.isAfter(now)) {
+            return PaymentReconciliationReason.LATE_SUCCESS_AFTER_EXPIRED;
+        }
+        return switch (status) {
+            case EXPIRED -> PaymentReconciliationReason.LATE_SUCCESS_AFTER_EXPIRED;
+            case CANCELLED -> PaymentReconciliationReason.LATE_SUCCESS_AFTER_CANCELLED;
+            case FAILED -> PaymentReconciliationReason.LATE_SUCCESS_AFTER_FAILED;
+            default -> PaymentReconciliationReason.SUCCESS_AFTER_PAYMENT_NOT_PAYABLE;
+        };
     }
 
     private void changeStatus(PaymentStatus nextStatus, Instant now) {

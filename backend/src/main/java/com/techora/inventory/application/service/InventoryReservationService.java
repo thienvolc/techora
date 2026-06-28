@@ -1,22 +1,20 @@
 package com.techora.inventory.application.service;
 
-import com.techora.catalog.dto.ProductSnapshot;
-import com.techora.catalog.service.ProductAvailabilityService;
 import com.techora.common.domain.event.InternalEventPublisher;
 import com.techora.inventory.application.command.ReserveInventoryCommand;
 import com.techora.inventory.application.command.ReserveInventoryItem;
-import com.techora.inventory.domain.entity.InventoryReservationEntity;
-import com.techora.inventory.domain.entity.InventoryReservationStatus;
-import com.techora.inventory.domain.event.StockReducedEvent;
+import com.techora.inventory.application.mapper.ReservationMapper;
 import com.techora.inventory.application.repository.InventoryReservationRepository;
 import com.techora.inventory.application.result.InventoryStockSnapshot;
+import com.techora.inventory.domain.entity.InventoryReservationEntity;
+import com.techora.inventory.domain.event.StockReducedEvent;
 import lombok.RequiredArgsConstructor;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,62 +22,68 @@ import java.util.UUID;
 @Transactional
 @RequiredArgsConstructor
 public class InventoryReservationService {
-
-    private static final int RESERVATION_EXPIRATION_MINUTES = 30;
-    private final InventoryReservationRepository repository;
+    private final InventoryReservationRepository reservationRepository;
     private final InventoryItemService inventoryItemService;
-    private final ProductAvailabilityService productAvailabilityService;
+    private final ReservationMapper reservationMapper;
     private final InternalEventPublisher internalEventPublisher;
+    private final Clock clock;
 
-    public void reserve(ReserveInventoryCommand command) {
-        command.items()
-                .forEach(item -> reserve(command.orderId(), item));
+    @Transactional
+    public void reserveOrder(ReserveInventoryCommand command) {
+        if (reservationExists(command.orderId())) {
+            return;
+        }
+        reserveAllItems(command);
     }
 
-    public void confirm(UUID orderId) {
-        var reservations = getReservationsOfOrder(orderId);
-        reservations.forEach(this::confirm);
-        repository.saveAll(reservations);
+    private boolean reservationExists(UUID orderId) {
+        return !reservationRepository.findLockedByOrderId(orderId).isEmpty();
     }
 
-    public void release(UUID orderId) {
-        var reservations = getReservationsOfOrder(orderId);
-        reservations.forEach(this::release);
-        repository.saveAll(reservations);
+    private void reserveAllItems(ReserveInventoryCommand command) {
+        // Lock inventory rows in deterministic product order to reduce cross-order deadlocks.
+        command.items().stream()
+                .sorted(Comparator.comparing(ReserveInventoryItem::productId))
+                .forEach(item -> reserveItem(item, command));
     }
 
-    @Scheduled(fixedDelay = RESERVATION_EXPIRATION_MINUTES * 60 * 1000)
-    public int expireAbandonedReservations() {
-        List<InventoryReservationEntity> expiredReservations = repository.findByStatusAndExpiresAtBefore(
-                InventoryReservationStatus.RESERVED, Instant.now());
-        expiredReservations.forEach(this::expire);
-        repository.saveAll(expiredReservations);
-        return expiredReservations.size();
+    private void reserveItem(ReserveInventoryItem item, ReserveInventoryCommand command) {
+        createReservation(item, command);
+        reserveProductAvailableQuantity(item);
     }
 
-    private void reserve(UUID orderId, ReserveInventoryItem item) {
-        ProductSnapshot product = getAvailableProduct(item.productId());
-        inventoryItemService.reserve(product.id(), item.quantity());
-        var reservation = buildReservation(orderId, product.id(), item.quantity());
-        repository.save(reservation);
+    private void createReservation(ReserveInventoryItem item, ReserveInventoryCommand command) {
+        var reservation = reservationMapper.toModel(item, command, now());
+        reservationRepository.saveAndFlush(reservation);
     }
 
-    private List<InventoryReservationEntity> getReservationsOfOrder(UUID orderId) {
-        return repository.findLockedByOrderId(orderId).stream()
-                .filter(InventoryReservationEntity::isReserved)
-                .toList();
+    private void reserveProductAvailableQuantity(ReserveInventoryItem item) {
+        inventoryItemService.reserve(item.productId(), item.quantity());
     }
 
-    private ProductSnapshot getAvailableProduct(UUID productId) {
-        return productAvailabilityService.getLockedAvailableSnapshotOrThrow(productId);
+
+    @Transactional
+    public void confirmOrder(UUID orderId) {
+        var reservations = getReservedReservationsOfOrder(orderId);
+        confirmAllReservations(reservations);
     }
 
-    private void confirm(InventoryReservationEntity reservation) {
-        int quantity = reservation.getQuantity();
-        UUID productId = reservation.getProductId();
+    private void confirmAllReservations(List<InventoryReservationEntity> reservations) {
+        reservations.forEach(this::confirmReservation);
+        reservationRepository.saveAll(reservations);
+    }
 
-        InventoryStockSnapshot stock = inventoryItemService.confirmReserved(productId, quantity);
+    private void confirmReservation(InventoryReservationEntity reservation) {
+        InventoryStockSnapshot stock = confirmProductReservedQuantity(reservation);
         reservation.markConfirmed();
+        publishStockReducedEvent(stock, reservation.getQuantity());
+    }
+
+    private InventoryStockSnapshot confirmProductReservedQuantity(InventoryReservationEntity reservation) {
+        return inventoryItemService.confirmReserved(reservation.getProductId(), reservation.getQuantity());
+    }
+
+    private void publishStockReducedEvent(InventoryStockSnapshot stock, int quantity) {
         internalEventPublisher.publish(StockReducedEvent.of(
                 stock.productId(),
                 quantity,
@@ -87,33 +91,35 @@ public class InventoryReservationService {
                 stock.updatedAt()));
     }
 
-    private void release(InventoryReservationEntity reservation) {
-        inventoryItemService.releaseReserved(
-                reservation.getProductId(),
-                reservation.getQuantity());
+
+    @Transactional
+    public void release(UUID orderId) {
+        var reservations = getReservedReservationsOfOrder(orderId);
+        releaseAllReservations(reservations);
+    }
+
+    private void releaseAllReservations(List<InventoryReservationEntity> reservations) {
+        reservations.forEach(this::releaseReservation);
+        reservationRepository.saveAll(reservations);
+    }
+
+    private void releaseReservation(InventoryReservationEntity reservation) {
+        releaseProductReservedQuantity(reservation);
         reservation.markRelease();
     }
 
-    private void expire(InventoryReservationEntity reservation) {
-        inventoryItemService.releaseReserved(
-                reservation.getProductId(),
-                reservation.getQuantity());
-        reservation.markExpired();
+    private void releaseProductReservedQuantity(InventoryReservationEntity reservation) {
+        inventoryItemService.releaseReserved(reservation.getProductId(), reservation.getQuantity());
     }
 
-    private InventoryReservationEntity buildReservation(UUID orderId,
-                                                        UUID productId,
-                                                        int quantity) {
 
-        Instant now = Instant.now();
-        return InventoryReservationEntity.builder()
-                .orderId(orderId)
-                .productId(productId)
-                .quantity(quantity)
-                .status(InventoryReservationStatus.RESERVED)
-                .expiresAt(now.plus(RESERVATION_EXPIRATION_MINUTES, ChronoUnit.MINUTES))
-                .createdAt(now)
-                .updatedAt(now)
-                .build();
+    private List<InventoryReservationEntity> getReservedReservationsOfOrder(UUID orderId) {
+        return reservationRepository.findLockedByOrderId(orderId).stream()
+                .filter(InventoryReservationEntity::isReserved)
+                .toList();
+    }
+
+    private Instant now() {
+        return Instant.now(clock);
     }
 }

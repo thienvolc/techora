@@ -6,10 +6,13 @@ import com.techora.order.domain.entity.Order;
 import com.techora.order.domain.entity.OrderStatus;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -51,6 +54,18 @@ public class OrderRepositoryImpl implements OrderRepository {
     @Override
     public Page<Order> findByUserId(UUID userId, Pageable pageable) {
         return jpaRepository.findByUserId(userId, pageable).map(OrderJpaEntity::toDomain);
+    }
+
+    @Override
+    public List<Order> findExpiredPaymentPendingForUpdate(Instant now, int limit) {
+        return jpaRepository.findExpiredPaymentPendingForUpdate(
+                        OrderStatus.PAYMENT_PENDING,
+                        now,
+                        PageRequest.of(0, Math.max(1, limit))
+                )
+                .stream()
+                .map(OrderJpaEntity::toDomain)
+                .toList();
     }
 
     @Override

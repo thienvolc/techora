@@ -32,7 +32,7 @@ public class InitiateVnPayPaymentUseCase {
     private InitiateVnPayPaymentResult initiatePayment(InitiateVnPayPaymentCommand command) {
         PaymentResult paymentResult = createPayment(command);
         String paymentUrl = buildPaymentUrl(paymentResult, command);
-        return new InitiateVnPayPaymentResult(paymentResult.id(), paymentUrl);
+        return new InitiateVnPayPaymentResult(paymentResult.id(), paymentUrl, paymentResult.expiresAt());
     }
 
     private PaymentResult createPayment(InitiateVnPayPaymentCommand command) {
@@ -40,6 +40,7 @@ public class InitiateVnPayPaymentUseCase {
                 new CreatePaymentCommand(
                         command.userId(),
                         command.orderId(),
+                        null,
                         command.idempotencyKey()
                 ));
     }

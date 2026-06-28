@@ -49,7 +49,7 @@ public class CartService {
         CartEntity cart = getOrCreateCart(userId);
         ProductSnapshot product =
                 productAvailabilityService
-                        .getLockedAvailableSnapshotOrThrow(
+                        .getLockedActiveProductOrThrow(
                                 request.productId());
         CartItemEntity item = getOrCreateItem(cart, product);
 

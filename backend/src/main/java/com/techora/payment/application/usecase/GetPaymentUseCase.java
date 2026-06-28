@@ -3,6 +3,7 @@ package com.techora.payment.application.usecase;
 import com.techora.common.application.aop.BusinessException;
 import com.techora.common.application.constant.ResponseCode;
 import com.techora.payment.application.mapper.PaymentMapper;
+import com.techora.payment.application.port.persistence.PaymentAttemptRepository;
 import com.techora.payment.application.port.persistence.PaymentRepository;
 import com.techora.payment.application.result.PaymentResult;
 import com.techora.payment.domain.entity.Payment;
@@ -16,12 +17,15 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class GetPaymentUseCase {
     private final PaymentRepository paymentRepository;
+    private final PaymentAttemptRepository paymentAttemptRepository;
     private final PaymentMapper paymentMapper;
 
     @Transactional(readOnly = true)
     public PaymentResult execute(UUID paymentId, UUID userId) {
         Payment payment = getPayment(paymentId, userId);
-        return paymentMapper.toResult(payment);
+        return paymentAttemptRepository.findLatestByPaymentId(payment.getId())
+                .map(attempt -> paymentMapper.toResult(payment, attempt))
+                .orElseGet(() -> paymentMapper.toResult(payment));
     }
 
     private Payment getPayment(UUID paymentId, UUID userId) {

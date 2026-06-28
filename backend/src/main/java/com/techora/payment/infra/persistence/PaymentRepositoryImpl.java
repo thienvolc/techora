@@ -27,14 +27,32 @@ public class PaymentRepositoryImpl implements PaymentRepository {
     }
 
     @Override
+    public Optional<Payment> findById(UUID paymentId) {
+        return jpaRepository.findById(paymentId)
+                .map(PaymentJpaEntity::toDomain);
+    }
+
+    @Override
     public Optional<Payment> findByIdAndUserId(UUID paymentId, UUID userId) {
         return jpaRepository.findByIdAndUserId(paymentId, userId)
                 .map(PaymentJpaEntity::toDomain);
     }
 
     @Override
-    public Optional<Payment> findByProviderReference(String providerReference) {
-        return jpaRepository.findByProviderReference(providerReference)
+    public Optional<Payment> findLockedById(UUID paymentId) {
+        return jpaRepository.findLockedById(paymentId)
+                .map(PaymentJpaEntity::toDomain);
+    }
+
+    @Override
+    public Optional<Payment> findLockedByOrderId(UUID orderId) {
+        return jpaRepository.findLockedByOrderId(orderId)
+                .map(PaymentJpaEntity::toDomain);
+    }
+
+    @Override
+    public Optional<Payment> findLockedByOrderIdAndUserId(UUID orderId, UUID userId) {
+        return jpaRepository.findLockedByOrderIdAndUserId(orderId, userId)
                 .map(PaymentJpaEntity::toDomain);
     }
 }

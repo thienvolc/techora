@@ -15,6 +15,7 @@ public record OrderResponse(
         OrderStatus status,
         BigDecimal total,
         List<OrderItemResponse> items,
+        Instant paymentDeadlineAt,
         Instant createdAt,
         Instant updatedAt
 ) {
@@ -25,6 +26,7 @@ public record OrderResponse(
                 result.status(),
                 result.total(),
                 result.items().stream().map(OrderItemResponse::from).toList(),
+                result.paymentDeadlineAt(),
                 result.createdAt(),
                 result.updatedAt()
         );

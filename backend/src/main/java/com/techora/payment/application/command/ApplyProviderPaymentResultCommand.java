@@ -8,6 +8,10 @@ public record ApplyProviderPaymentResultCommand(
         String providerReference,
         BigDecimal amount,
         boolean successful,
+        String responseCode,
+        String providerStatusCode,
+        String providerTransactionId,
+        String rawPayload,
         PaymentProvider providerName
 ) {
 }

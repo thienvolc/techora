@@ -14,4 +14,12 @@ public enum OrderStatus {
     public static boolean isCancelled(OrderStatus newStatus) {
         return newStatus == CANCELLED;
     }
+
+    public boolean isPaid() {
+        return this == PAID;
+    }
+
+    public boolean isCancelled() {
+        return this == CANCELLED;
+    }
 }

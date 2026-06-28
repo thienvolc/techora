@@ -5,6 +5,9 @@ import com.techora.cart.CartService;
 import com.techora.cart.dto.checkout.CartCheckoutSnapshot;
 import com.techora.checkout.controller.response.CheckoutResponse;
 import com.techora.common.application.constant.ResponseCode;
+import com.techora.checkout.application.port.payment.CheckoutPaymentCommand;
+import com.techora.checkout.application.port.payment.CheckoutPaymentPort;
+import com.techora.checkout.application.port.payment.CheckoutPaymentResult;
 import com.techora.idempotency.IdempotencyCommandExecutor;
 import com.techora.inventory.application.service.InventoryReservationService;
 import com.techora.order.application.command.PlaceOrderCommand;
@@ -25,6 +28,7 @@ public class CheckoutUseCase {
     private final OrderPricingService orderPricingService;
     private final OrderCheckoutService orderCheckoutService;
     private final InventoryReservationService inventoryReservationService;
+    private final CheckoutPaymentPort checkoutPaymentPort;
     private final IdempotencyCommandExecutor idempotencyCommandExecutor;
     private final CheckoutIdempotencyFactory checkoutIdempotencyFactory;
 
@@ -32,11 +36,12 @@ public class CheckoutUseCase {
     public CheckoutResponse execute(CheckoutCommand command) {
         return idempotencyCommandExecutor.execute(
                 checkoutIdempotencyFactory.create(command),
-                () -> handleWithoutIdempotency(command.userId())
+                () -> handleWithoutIdempotency(command)
         );
     }
 
-    private CheckoutResponse handleWithoutIdempotency(UUID userId) {
+    private CheckoutResponse handleWithoutIdempotency(CheckoutCommand command) {
+        UUID userId = command.userId();
         CartCheckoutSnapshot cart = cartService.getCheckoutSnapshot(userId);
         validateCartHasItems(cart);
 
@@ -44,13 +49,19 @@ public class CheckoutUseCase {
         PlaceOrderCommand placeOrderCommand = checkoutMapper.toPlaceOrderCommand(cart, orderPrice);
         OrderSnapshot placedOrder = orderCheckoutService.place(placeOrderCommand);
 
-        inventoryReservationService.reserve(
-                checkoutMapper.toReserveInventoryCommand(placedOrder));
+        inventoryReservationService.reserveOrder(
+                checkoutMapper.toReserveInventoryCommand(placedOrder, placedOrder.paymentDeadlineAt()));
         OrderSnapshot stockReservedOrder = orderCheckoutService.markStockReserved(placedOrder.orderId());
+        CheckoutPaymentResult payment = checkoutPaymentPort.initiate(new CheckoutPaymentCommand(
+                userId,
+                stockReservedOrder.orderId(),
+                placedOrder.paymentDeadlineAt(),
+                command.ipAddress()
+        ));
 
         cartService.clearCart(userId);
 
-        return checkoutMapper.toResponse(stockReservedOrder);
+        return checkoutMapper.toResponse(stockReservedOrder, payment);
     }
 
     private void validateCartHasItems(CartCheckoutSnapshot cart) {

@@ -18,6 +18,7 @@ public class Order {
     private final UUID userId;
     private final String username;
     private final BigDecimal total;
+    private final Instant paymentDeadlineAt;
     private final Instant createdAt;
     private final List<OrderItem> items;
 
@@ -30,6 +31,7 @@ public class Order {
                   String username,
                   OrderStatus status,
                   BigDecimal total,
+                  Instant paymentDeadlineAt,
                   List<OrderItem> items,
                   Instant createdAt,
                   Instant updatedAt) {
@@ -39,6 +41,7 @@ public class Order {
         this.username = username;
         this.status = status;
         this.total = total;
+        this.paymentDeadlineAt = paymentDeadlineAt;
         this.items = new ArrayList<>(items == null ? List.of() : items);
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;

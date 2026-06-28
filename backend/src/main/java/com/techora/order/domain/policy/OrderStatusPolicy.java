@@ -17,7 +17,8 @@ public final class OrderStatusPolicy {
 
             OrderStatus.PAYMENT_PENDING, Set.of(
                     OrderStatus.PAID,
-                    OrderStatus.PAYMENT_FAILED),
+                    OrderStatus.PAYMENT_FAILED,
+                    OrderStatus.CANCELLED),
 
             OrderStatus.PAID, Set.of(
                     OrderStatus.FULFILLING,

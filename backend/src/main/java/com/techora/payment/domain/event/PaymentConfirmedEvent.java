@@ -14,6 +14,7 @@ public record PaymentConfirmedEvent(
         UUID userId,
         BigDecimal amount,
         PaymentStatus status,
+        String providerName,
         Instant occurredAt
 ) implements InternalEvent {
 
@@ -29,6 +30,19 @@ public record PaymentConfirmedEvent(
                 payment.getUserId(),
                 payment.getAmount(),
                 payment.getStatus(),
+                null,
+                payment.getUpdatedAt()
+        );
+    }
+
+    public PaymentConfirmedEvent(Payment payment, String providerName) {
+        this(
+                payment.getId(),
+                payment.getOrderId(),
+                payment.getUserId(),
+                payment.getAmount(),
+                payment.getStatus(),
+                providerName,
                 payment.getUpdatedAt()
         );
     }

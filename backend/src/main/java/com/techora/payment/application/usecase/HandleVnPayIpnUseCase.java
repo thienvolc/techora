@@ -47,6 +47,10 @@ public class HandleVnPayIpnUseCase {
                         result.txnRef(),
                         result.amount(),
                         result.isSuccess(),
+                        result.responseCode(),
+                        result.providerStatusCode(),
+                        result.providerTransactionId(),
+                        result.rawPayload(),
                         PROVIDER_NAME
                 ));
     }

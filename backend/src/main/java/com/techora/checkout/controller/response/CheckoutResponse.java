@@ -12,6 +12,9 @@ public record CheckoutResponse(
         UUID userId,
         OrderStatus status,
         BigDecimal total,
+        UUID paymentId,
+        String paymentUrl,
+        Instant paymentExpiresAt,
         List<CheckoutItemResponse> items,
         Instant createdAt,
         Instant updatedAt

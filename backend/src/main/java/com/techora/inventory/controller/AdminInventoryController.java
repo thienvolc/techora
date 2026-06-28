@@ -4,8 +4,10 @@ import com.techora.common.application.dto.response.ResponseDto;
 import com.techora.common.application.service.ResponseFactory;
 import com.techora.inventory.application.mapper.InventoryItemMapper;
 import com.techora.inventory.application.service.InventoryItemService;
+import com.techora.inventory.application.service.InventoryReservationReconciliationService;
 import com.techora.inventory.controller.constant.InventoryPageConstant;
 import com.techora.inventory.controller.request.ReduceStockRequest;
+import com.techora.inventory.controller.response.InventoryReservationMismatchResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -26,6 +28,7 @@ import java.util.UUID;
 public class AdminInventoryController {
 
     private final InventoryItemService inventoryItemService;
+    private final InventoryReservationReconciliationService inventoryReservationReconciliationService;
     private final InventoryItemMapper inventoryItemMapper;
     private final ResponseFactory responseFactory;
 
@@ -57,6 +60,15 @@ public class AdminInventoryController {
         return responseFactory.success(
                 inventoryItemMapper.toProductResponse(
                         inventoryItemService.reduceStock(productId, request.stock()))
+        );
+    }
+
+    @GetMapping("/reservation-reconciliation/mismatches")
+    public ResponseDto getReservationMismatches() {
+        return responseFactory.success(
+                inventoryReservationReconciliationService.findMismatches().stream()
+                        .map(InventoryReservationMismatchResponse::from)
+                        .toList()
         );
     }
 }

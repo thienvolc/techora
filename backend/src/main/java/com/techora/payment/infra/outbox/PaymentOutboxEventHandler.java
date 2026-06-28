@@ -2,6 +2,7 @@ package com.techora.payment.infra.outbox;
 
 import com.techora.payment.domain.event.PaymentConfirmedEvent;
 import com.techora.payment.domain.event.PaymentFailedEvent;
+import com.techora.payment.domain.event.PaymentReconciliationRequiredEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
@@ -20,5 +21,10 @@ public class PaymentOutboxEventHandler {
     @EventListener
     public void on(PaymentFailedEvent event) {
         paymentOutboxEventPublisher.recordFailed(event);
+    }
+
+    @EventListener
+    public void on(PaymentReconciliationRequiredEvent event) {
+        paymentOutboxEventPublisher.recordReconciliationRequired(event);
     }
 }

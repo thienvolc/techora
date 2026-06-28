@@ -1,4 +1,4 @@
-package com.techora.payment.controller.service;
+package com.techora.common.infra.web;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Component;

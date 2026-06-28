@@ -3,8 +3,6 @@ package com.techora.order.application.service;
 import com.techora.order.application.actor.OrderActor;
 import com.techora.order.application.command.UpdateOrderStatusCommand;
 import com.techora.order.application.eventpublisher.OrderStatusChange;
-import com.techora.order.application.eventpublisher.OrderStatusChangedEventPublisher;
-import com.techora.order.application.port.persistence.OrderRepository;
 import com.techora.order.application.result.OrderSnapshot;
 import com.techora.order.domain.entity.OrderStatus;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +14,6 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class OrderReservationService {
-    private final OrderStatusChangedEventPublisher statusChangedEventPublisher;
     private final OrderStatusUpdater orderStatusUpdater;
 
     @Transactional
@@ -29,7 +26,6 @@ public class OrderReservationService {
                                 OrderActor.system()
                         )
                 );
-        statusChangedEventPublisher.publish(statusChange);
         return OrderSnapshot.from(statusChange.order());
     }
 }

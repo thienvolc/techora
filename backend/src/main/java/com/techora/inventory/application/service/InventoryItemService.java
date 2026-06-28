@@ -26,11 +26,10 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class InventoryItemService {
-
     private final InventoryItemRepository inventoryItemRepository;
     private final ProductCatalogQueryService productCatalogQueryService;
-    private final InternalEventPublisher internalEventPublisher;
     private final InventoryItemMapper inventoryItemMapper;
+    private final InternalEventPublisher internalEventPublisher;
 
     @Transactional(readOnly = true)
     public PageResponse<InventoryItemProductResult> getLowStockProducts(int threshold, Pageable pageable) {
@@ -47,6 +46,16 @@ public class InventoryItemService {
                 items.getTotalElements(),
                 items.getTotalPages()
         );
+    }
+
+    private InventoryItemProductResult toProductResult(InventoryItemEntity item,
+                                                       Map<UUID, CatalogProductSnapshot> productsById) {
+
+        CatalogProductSnapshot product = productsById.get(item.getProductId());
+        if (product == null) {
+            throw new BusinessException(ResponseCode.PRODUCT_NOT_FOUND);
+        }
+        return inventoryItemMapper.toProductResult(product, item.getQuantityOnHand());
     }
 
     @Transactional
@@ -149,16 +158,6 @@ public class InventoryItemService {
                         .toList())
                 .stream()
                 .collect(Collectors.toMap(CatalogProductSnapshot::id, product -> product));
-    }
-
-    private InventoryItemProductResult toProductResult(InventoryItemEntity item,
-                                                       Map<UUID, CatalogProductSnapshot> productsById) {
-
-        CatalogProductSnapshot product = productsById.get(item.getProductId());
-        if (product == null) {
-            throw new BusinessException(ResponseCode.PRODUCT_NOT_FOUND);
-        }
-        return inventoryItemMapper.toProductResult(product, item.getQuantityOnHand());
     }
 
     private InventoryStockSnapshot toStockSnapshot(InventoryItemEntity item) {

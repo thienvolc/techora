@@ -24,6 +24,7 @@ public class OutboxEventFactory {
                 .retryCount(0)
                 .createdAt(now)
                 .updatedAt(now)
+                .nextAttemptAt(now)
                 .build();
     }
 }

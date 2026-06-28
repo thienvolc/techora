@@ -8,6 +8,8 @@ import org.springframework.data.domain.Pageable;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.time.Instant;
+import java.util.List;
 
 public interface OrderRepository {
 
@@ -22,6 +24,8 @@ public interface OrderRepository {
     Optional<Order> findLockedWithItemsByIdAndUserId(UUID orderId, UUID userId);
 
     Page<Order> findByUserId(UUID userId, Pageable pageable);
+
+    List<Order> findExpiredPaymentPendingForUpdate(Instant now, int limit);
 
     Map<OrderStatus, Long> countOrdersByStatus();
 }

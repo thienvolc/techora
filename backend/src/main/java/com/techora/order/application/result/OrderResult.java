@@ -13,6 +13,7 @@ public record OrderResult(
         OrderStatus status,
         BigDecimal total,
         List<OrderItemResult> items,
+        Instant paymentDeadlineAt,
         Instant createdAt,
         Instant updatedAt
 ) {

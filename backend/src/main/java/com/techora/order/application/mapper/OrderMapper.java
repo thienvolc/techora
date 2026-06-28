@@ -23,6 +23,7 @@ public class OrderMapper {
                 order.getStatus(),
                 order.getTotal(),
                 order.getItems().stream().map(this::toItemResult).toList(),
+                order.getPaymentDeadlineAt(),
                 order.getCreatedAt(),
                 order.getUpdatedAt()
         );
@@ -50,12 +51,13 @@ public class OrderMapper {
         );
     }
 
-    public Order toOrder(PlaceOrderCommand command, Instant createdAt) {
+    public Order toOrder(PlaceOrderCommand command, Instant createdAt, Instant paymentDeadlineAt) {
         return Order.builder()
                 .userId(command.userId())
                 .username(command.username())
                 .status(OrderStatus.CREATED)
                 .total(command.total())
+                .paymentDeadlineAt(paymentDeadlineAt)
                 .items(command.items().stream()
                         .map(this::toOrderItem)
                         .toList())

@@ -38,6 +38,7 @@ app:
     instance-id: ${HOSTNAME:${random.uuid}}
 
 payment:
+  window-timeout-minutes: ${PAYMENT_WINDOW_TIMEOUT_MINUTES:60}
   providers:
     vnpay:
       terminal-code: ${VNPAY_TMN_CODE:DEMO}

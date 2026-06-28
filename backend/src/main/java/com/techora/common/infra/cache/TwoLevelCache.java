@@ -1,11 +1,15 @@
 package com.techora.common.infra.cache;
 
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.cache.Cache;
+import org.springframework.cache.interceptor.CacheErrorHandler;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
 public class TwoLevelCache implements Cache {
@@ -15,15 +19,32 @@ public class TwoLevelCache implements Cache {
     private static final String LOCAL_MISS_METRIC = "techora.cache.local.miss";
     private static final String REDIS_HIT_METRIC = "techora.cache.redis.hit";
     private static final String REDIS_MISS_METRIC = "techora.cache.redis.miss";
+    private static final String REDIS_BYPASSED_METRIC = "techora.cache.redis.bypassed";
+    private static final String OPERATION_TAG = "operation";
+    private static final long MAX_SINGLE_FLIGHT_LOCKS = 10_000;
 
     private final Cache localCache;
     private final Cache redisCache;
     private final MeterRegistry meterRegistry;
+    private final RedisCacheAvailability redisCacheAvailability;
+    private final CacheErrorHandler cacheErrorHandler;
+    private final com.github.benmanes.caffeine.cache.Cache<Object, ReentrantLock> singleFlightLocks;
 
-    public TwoLevelCache(Cache localCache, Cache redisCache, MeterRegistry meterRegistry) {
+    public TwoLevelCache(Cache localCache,
+                         Cache redisCache,
+                         MeterRegistry meterRegistry,
+                         RedisCacheAvailability redisCacheAvailability,
+                         CacheErrorHandler cacheErrorHandler) {
+
         this.localCache = localCache;
         this.redisCache = redisCache;
         this.meterRegistry = meterRegistry;
+        this.redisCacheAvailability = redisCacheAvailability;
+        this.cacheErrorHandler = cacheErrorHandler;
+        this.singleFlightLocks = Caffeine.newBuilder()
+                .maximumSize(MAX_SINGLE_FLIGHT_LOCKS)
+                .expireAfterAccess(Duration.ofMinutes(5))
+                .build();
     }
 
     @Override
@@ -45,7 +66,7 @@ public class TwoLevelCache implements Cache {
         }
         record(LOCAL_MISS_METRIC);
 
-        ValueWrapper redisValue = redisCache.get(key);
+        ValueWrapper redisValue = getFromRedis(key);
         if (redisValue != null) {
             record(REDIS_HIT_METRIC);
             localCache.put(key, redisValue.get());
@@ -64,7 +85,7 @@ public class TwoLevelCache implements Cache {
         }
         record(LOCAL_MISS_METRIC);
 
-        T redisValue = redisCache.get(key, type);
+        T redisValue = getFromRedis(key, type);
         if (redisValue != null) {
             record(REDIS_HIT_METRIC);
             localCache.put(key, redisValue);
@@ -82,12 +103,21 @@ public class TwoLevelCache implements Cache {
             return (T) cachedValue.get();
         }
 
+        ReentrantLock lock = singleFlightLocks.get(key, ignored -> new ReentrantLock());
+        lock.lock();
         try {
+            ValueWrapper cachedValueAfterLock = get(key);
+            if (cachedValueAfterLock != null) {
+                return (T) cachedValueAfterLock.get();
+            }
+
             T loadedValue = valueLoader.call();
             put(key, loadedValue);
             return loadedValue;
         } catch (Throwable ex) {
             throw new ValueRetrievalException(key, valueLoader, ex);
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -119,7 +149,7 @@ public class TwoLevelCache implements Cache {
     @Override
     public void put(Object key, Object value) {
         localCache.put(key, value);
-        redisCache.put(key, value);
+        putToRedis(key, value);
     }
 
     @Override
@@ -136,27 +166,149 @@ public class TwoLevelCache implements Cache {
     @Override
     public void evict(Object key) {
         localCache.evict(key);
-        redisCache.evict(key);
+        evictFromRedis(key);
     }
 
     @Override
     public boolean evictIfPresent(Object key) {
         boolean localEvicted = localCache.evictIfPresent(key);
-        boolean redisEvicted = redisCache.evictIfPresent(key);
+        boolean redisEvicted = evictFromRedisIfPresent(key);
         return localEvicted || redisEvicted;
     }
 
     @Override
     public void clear() {
         localCache.clear();
-        redisCache.clear();
+        clearRedis();
     }
 
     @Override
     public boolean invalidate() {
         boolean localInvalidated = localCache.invalidate();
-        boolean redisInvalidated = redisCache.invalidate();
+        boolean redisInvalidated = invalidateRedis();
         return localInvalidated || redisInvalidated;
+    }
+
+    private ValueWrapper getFromRedis(Object key) {
+        if (!canUseRedis("get")) {
+            return null;
+        }
+
+        try {
+            ValueWrapper value = redisCache.get(key);
+            redisCacheAvailability.recordSuccess();
+            return value;
+        } catch (RuntimeException exception) {
+            handleRedisGetError(key, exception);
+            return null;
+        }
+    }
+
+    private <T> T getFromRedis(Object key, Class<T> type) {
+        if (!canUseRedis("get")) {
+            return null;
+        }
+
+        try {
+            T value = redisCache.get(key, type);
+            redisCacheAvailability.recordSuccess();
+            return value;
+        } catch (RuntimeException exception) {
+            handleRedisGetError(key, exception);
+            return null;
+        }
+    }
+
+    private void putToRedis(Object key, Object value) {
+        if (!canUseRedis("put")) {
+            return;
+        }
+
+        try {
+            redisCache.put(key, value);
+            redisCacheAvailability.recordSuccess();
+        } catch (RuntimeException exception) {
+            redisCacheAvailability.recordFailure(exception);
+            cacheErrorHandler.handleCachePutError(exception, redisCache, key, value);
+        }
+    }
+
+    private void evictFromRedis(Object key) {
+        if (!canUseRedis("evict")) {
+            return;
+        }
+
+        try {
+            redisCache.evict(key);
+            redisCacheAvailability.recordSuccess();
+        } catch (RuntimeException exception) {
+            redisCacheAvailability.recordFailure(exception);
+            cacheErrorHandler.handleCacheEvictError(exception, redisCache, key);
+        }
+    }
+
+    private boolean evictFromRedisIfPresent(Object key) {
+        if (!canUseRedis("evict")) {
+            return false;
+        }
+
+        try {
+            boolean evicted = redisCache.evictIfPresent(key);
+            redisCacheAvailability.recordSuccess();
+            return evicted;
+        } catch (RuntimeException exception) {
+            redisCacheAvailability.recordFailure(exception);
+            cacheErrorHandler.handleCacheEvictError(exception, redisCache, key);
+            return false;
+        }
+    }
+
+    private void clearRedis() {
+        if (!canUseRedis("clear")) {
+            return;
+        }
+
+        try {
+            redisCache.clear();
+            redisCacheAvailability.recordSuccess();
+        } catch (RuntimeException exception) {
+            redisCacheAvailability.recordFailure(exception);
+            cacheErrorHandler.handleCacheClearError(exception, redisCache);
+        }
+    }
+
+    private boolean invalidateRedis() {
+        if (!canUseRedis("clear")) {
+            return false;
+        }
+
+        try {
+            boolean invalidated = redisCache.invalidate();
+            redisCacheAvailability.recordSuccess();
+            return invalidated;
+        } catch (RuntimeException exception) {
+            redisCacheAvailability.recordFailure(exception);
+            cacheErrorHandler.handleCacheClearError(exception, redisCache);
+            return false;
+        }
+    }
+
+    private boolean canUseRedis(String operation) {
+        if (redisCacheAvailability.canUseRedis()) {
+            return true;
+        }
+
+        meterRegistry.counter(
+                        REDIS_BYPASSED_METRIC,
+                        CACHE_TAG, getName(),
+                        OPERATION_TAG, operation)
+                .increment();
+        return false;
+    }
+
+    private void handleRedisGetError(Object key, RuntimeException exception) {
+        redisCacheAvailability.recordFailure(exception);
+        cacheErrorHandler.handleCacheGetError(exception, redisCache, key);
     }
 
     private void record(String metricName) {

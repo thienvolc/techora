@@ -11,8 +11,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "payments", uniqueConstraints = {
-        @UniqueConstraint(name = "uk_payments_order_id", columnNames = "order_id"),
-        @UniqueConstraint(name = "uk_payments_provider_reference", columnNames = "provider_reference")
+        @UniqueConstraint(name = "uk_payments_order_id", columnNames = "order_id")
 })
 @Getter
 @Setter
@@ -38,11 +37,11 @@ public class PaymentJpaEntity {
     private BigDecimal amount;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 40)
     private PaymentStatus status;
 
-    @Column(nullable = false, length = 80)
-    private String providerReference;
+    @Column(name = "payment_window_expires_at", nullable = false)
+    private Instant paymentWindowExpiresAt;
 
     @Column(nullable = false)
     private Instant createdAt;
@@ -58,7 +57,7 @@ public class PaymentJpaEntity {
                 .username(payment.getUsername())
                 .amount(payment.getAmount())
                 .status(payment.getStatus())
-                .providerReference(payment.getProviderReference())
+                .paymentWindowExpiresAt(payment.getPaymentWindowExpiresAt())
                 .createdAt(payment.getCreatedAt())
                 .updatedAt(payment.getUpdatedAt())
                 .build();
@@ -72,7 +71,7 @@ public class PaymentJpaEntity {
                 .username(username)
                 .amount(amount)
                 .status(status)
-                .providerReference(providerReference)
+                .paymentWindowExpiresAt(paymentWindowExpiresAt)
                 .createdAt(createdAt)
                 .updatedAt(updatedAt)
                 .build();

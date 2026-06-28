@@ -11,7 +11,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "outbox_events", indexes = {
-        @Index(name = "idx_outbox_events_status_created_at", columnList = "status, created_at"),
+        @Index(name = "idx_outbox_events_status_next_attempt", columnList = "status, next_attempt_at"),
         @Index(name = "idx_outbox_events_aggregate", columnList = "aggregate_type, aggregate_id")
 })
 @Getter
@@ -56,4 +56,62 @@ public class OutboxEventEntity {
 
     @Column(name = "processed_at")
     private Instant processedAt;
+
+    @Column(name = "next_attempt_at")
+    private Instant nextAttemptAt;
+
+    @Column(name = "failed_at")
+    private Instant failedAt;
+
+    @Column(name = "locked_at")
+    private Instant lockedAt;
+
+    @Column(name = "locked_by", length = 120)
+    private String lockedBy;
+
+    public void markProcessing(String instanceId, Instant now) {
+        status = OutboxEventStatus.PROCESSING;
+        lockedAt = now;
+        lockedBy = instanceId;
+        updatedAt = now;
+    }
+
+    public void markPublished(Instant now) {
+        status = OutboxEventStatus.PUBLISHED;
+        processedAt = now;
+        updatedAt = now;
+        lastError = null;
+        lockedAt = null;
+        lockedBy = null;
+    }
+
+    public void scheduleRetry(String errorMessage, Instant nextAttemptAt, Instant now) {
+        status = OutboxEventStatus.PENDING;
+        retryCount++;
+        this.nextAttemptAt = nextAttemptAt;
+        updatedAt = now;
+        lastError = errorMessage;
+        lockedAt = null;
+        lockedBy = null;
+    }
+
+    public void markFailed(String errorMessage, Instant now) {
+        status = OutboxEventStatus.FAILED;
+        retryCount++;
+        failedAt = now;
+        updatedAt = now;
+        lastError = errorMessage;
+        lockedAt = null;
+        lockedBy = null;
+    }
+
+    public void retryNow(Instant now) {
+        status = OutboxEventStatus.PENDING;
+        nextAttemptAt = now;
+        failedAt = null;
+        updatedAt = now;
+        lastError = null;
+        lockedAt = null;
+        lockedBy = null;
+    }
 }

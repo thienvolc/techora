@@ -73,8 +73,16 @@ public class VnPayGateway implements VnPayGatewayPort {
                 .txnRef(txnRef)
                 .amount(fromVnPayAmount(amount))
                 .responseCode(responseCode)
-                .transactionStatus(transactionStatus)
+                .providerStatusCode(transactionStatus)
+                .providerTransactionId(params.get(VnPayParams.TRANSACTION_NO))
+                .rawPayload(rawPayload(params))
                 .build();
+    }
+
+    private String rawPayload(Map<String, String> params) {
+        return sortedKeys(params).stream()
+                .map(key -> key + Symbol.EQUAL + params.get(key))
+                .collect(Collectors.joining(Symbol.AND));
     }
 
     private String buildPaymentUrl(Map<String, String> params) {

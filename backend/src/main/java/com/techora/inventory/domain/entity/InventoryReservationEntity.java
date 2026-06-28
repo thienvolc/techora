@@ -7,10 +7,18 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "inventory_reservations", indexes = {
-        @Index(name = "idx_inventory_reservations_order", columnList = "order_id"),
-        @Index(name = "idx_inventory_reservations_product_status", columnList = "product_id,status")
-})
+@Table(
+        name = "inventory_reservations",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_inventory_reservations_order_product",
+                columnNames = {"order_id", "product_id"}
+        ),
+        indexes = {
+                @Index(name = "idx_inventory_reservations_order", columnList = "order_id"),
+                @Index(name = "idx_inventory_reservations_product_status", columnList = "product_id,status"),
+                @Index(name = "idx_inventory_reservations_status_product", columnList = "status,product_id")
+        }
+)
 @Getter
 @Setter
 @Builder
@@ -44,7 +52,7 @@ public class InventoryReservationEntity {
     private Instant updatedAt;
 
     public boolean isReserved() {
-        return  status == InventoryReservationStatus.RESERVED;
+        return status == InventoryReservationStatus.RESERVED;
     }
 
     public void markRelease() {

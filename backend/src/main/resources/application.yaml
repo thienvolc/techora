@@ -18,8 +18,8 @@ spring:
     redis:
       host: localhost
       port: 6379
-      connect-timeout: 1s
-      timeout: 1s
+      connect-timeout: 250ms
+      timeout: 250ms
       lettuce:
         shutdown-timeout: 100ms
   kafka:
@@ -49,14 +49,18 @@ app:
   cache:
     local:
       maximum-size: 10000
+    redis-bypass:
+      enabled: true
+      failure-threshold: 3
+      cooldown: 5s
     ttl:
       default-ttl: 10m
       product-detail: 10m
       product-listing: 60s
       active-categories: 30m
-      local-product-detail: 60s
-      local-product-listing: 30s
-      local-active-categories: 5m
+      local-product-detail: 10s
+      local-product-listing: 15s
+      local-active-categories: 60s
   rate-limit:
     browse:
       enabled: true
@@ -80,10 +84,12 @@ app:
       max-retries: 5
       max-backoff-seconds: 60
       step-backoff-seconds: 5
+      processing-timeout-seconds: 300
   runtime:
     instance-id: ${HOSTNAME:${random.uuid}}
 
 payment:
+  window-timeout-minutes: ${PAYMENT_WINDOW_TIMEOUT_MINUTES:60}
   providers:
     vnpay:
       terminal-code: ${VNPAY_TMN_CODE:DEMO}

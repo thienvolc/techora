@@ -13,7 +13,9 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "orders")
+@Table(name = "orders", indexes = {
+        @Index(name = "idx_orders_status_payment_deadline", columnList = "status,payment_deadline_at")
+})
 @Getter
 @Setter
 @Builder
@@ -35,6 +37,9 @@ public class OrderJpaEntity {
     @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal total;
 
+    @Column(nullable = false)
+    private Instant paymentDeadlineAt;
+
     @Builder.Default
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItemJpaEntity> items = new ArrayList<>();
@@ -52,6 +57,7 @@ public class OrderJpaEntity {
                 .username(user.getUsername())
                 .status(status)
                 .total(total)
+                .paymentDeadlineAt(paymentDeadlineAt)
                 .items(items.stream().map(OrderItemJpaEntity::toDomain).toList())
                 .createdAt(createdAt)
                 .updatedAt(updatedAt)
@@ -64,6 +70,7 @@ public class OrderJpaEntity {
                 .user(user)
                 .status(order.getStatus())
                 .total(order.getTotal())
+                .paymentDeadlineAt(order.getPaymentDeadlineAt())
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
                 .build();

@@ -15,6 +15,7 @@ public record OrderSnapshot(
         OrderStatus status,
         BigDecimal total,
         List<OrderItemSnapshot> items,
+        Instant paymentDeadlineAt,
         Instant createdAt,
         Instant updatedAt
 ) {
@@ -32,6 +33,7 @@ public record OrderSnapshot(
                 order.getItems().stream()
                         .map(OrderItemSnapshot::from)
                         .toList(),
+                order.getPaymentDeadlineAt(),
                 order.getCreatedAt(),
                 order.getUpdatedAt()
         );

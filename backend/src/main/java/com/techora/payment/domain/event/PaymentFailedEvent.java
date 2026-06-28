@@ -14,6 +14,7 @@ public record PaymentFailedEvent(
         UUID userId,
         BigDecimal amount,
         PaymentStatus status,
+        String providerName,
         Instant occurredAt
 ) implements InternalEvent {
 
@@ -29,6 +30,19 @@ public record PaymentFailedEvent(
                 payment.getUserId(),
                 payment.getAmount(),
                 payment.getStatus(),
+                null,
+                payment.getUpdatedAt()
+        );
+    }
+
+    public PaymentFailedEvent(Payment payment, String providerName) {
+        this(
+                payment.getId(),
+                payment.getOrderId(),
+                payment.getUserId(),
+                payment.getAmount(),
+                payment.getStatus(),
+                providerName,
                 payment.getUpdatedAt()
         );
     }

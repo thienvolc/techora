@@ -2,14 +2,16 @@ package com.techora.payment.controller.response;
 
 import com.techora.payment.application.result.InitiateVnPayPaymentResult;
 
+import java.time.Instant;
 import java.util.UUID;
 
 public record VnPayInitiatePaymentResponse(
         UUID paymentId,
-        String paymentUrl
+        String paymentUrl,
+        Instant expiresAt
 ) {
 
     public static VnPayInitiatePaymentResponse from(InitiateVnPayPaymentResult result) {
-        return new VnPayInitiatePaymentResponse(result.paymentId(), result.paymentUrl());
+        return new VnPayInitiatePaymentResponse(result.paymentId(), result.paymentUrl(), result.expiresAt());
     }
 }

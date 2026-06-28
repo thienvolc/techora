@@ -6,7 +6,5 @@ public interface OrderPaymentPort {
 
     PreparedOrderForPayment preparePayment(UUID userId, UUID orderId);
 
-    void confirmPayment(UUID orderId, String providerName);
-
-    void markPaymentFailedAndCancelOrder(UUID orderId, String providerName);
+    OrderPaymentConfirmationResult confirmPayment(UUID orderId, String providerName);
 }

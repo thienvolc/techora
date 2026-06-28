@@ -17,6 +17,7 @@ public final class VnPayParams {
     public static final String IP_ADDRESS = "vnp_IpAddr";
     public static final String RESPONSE_CODE = "vnp_ResponseCode";
     public static final String TRANSACTION_STATUS = "vnp_TransactionStatus";
+    public static final String TRANSACTION_NO = "vnp_TransactionNo";
     public static final String SECURE_HASH = "vnp_SecureHash";
     public static final String SECURE_HASH_TYPE = "vnp_SecureHashType";
 

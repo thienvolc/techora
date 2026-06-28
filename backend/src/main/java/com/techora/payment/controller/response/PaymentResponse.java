@@ -14,6 +14,7 @@ public record PaymentResponse(
         BigDecimal amount,
         PaymentStatus status,
         String providerReference,
+        Instant expiresAt,
         Instant createdAt,
         Instant updatedAt
 ) {
@@ -26,6 +27,7 @@ public record PaymentResponse(
                 result.amount(),
                 result.status(),
                 result.providerReference(),
+                result.expiresAt(),
                 result.createdAt(),
                 result.updatedAt()
         );

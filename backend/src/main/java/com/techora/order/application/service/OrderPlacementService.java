@@ -1,5 +1,6 @@
 package com.techora.order.application.service;
 
+import com.techora.common.application.policy.OrderPaymentWindowsPolicy;
 import com.techora.common.domain.event.InternalEventPublisher;
 import com.techora.order.application.command.PlaceOrderCommand;
 import com.techora.order.application.mapper.OrderMapper;
@@ -20,6 +21,7 @@ public class OrderPlacementService {
     private final OrderRepository orderRepository;
     private final OrderMapper orderMapper;
     private final InternalEventPublisher internalEventPublisher;
+    private final OrderPaymentWindowsPolicy orderPaymentWindowsPolicy;
     private final Clock clock;
 
     @Transactional
@@ -30,7 +32,12 @@ public class OrderPlacementService {
     }
 
     private Order createOrder(PlaceOrderCommand command) {
-        Order order = orderMapper.toOrder(command, now());
+        Instant createdAt = now();
+        Order order = orderMapper.toOrder(
+                command,
+                createdAt,
+                orderPaymentWindowsPolicy.expiresAt(createdAt)
+        );
         return orderRepository.save(order);
     }
 

@@ -17,22 +17,25 @@ public class OrderPaymentPortAdapter implements OrderPaymentPort {
 
     @Override
     public PreparedOrderForPayment preparePayment(UUID userId, UUID orderId) {
-        PaymentPreparedOrder preparedOrder = orderPaymentService.preparePayment(orderId);
+        PaymentPreparedOrder preparedOrder = orderPaymentService.preparePayment(userId, orderId);
         return new PreparedOrderForPayment(
                 preparedOrder.orderId(),
                 preparedOrder.userId(),
                 preparedOrder.username(),
-                preparedOrder.total()
+                preparedOrder.total(),
+                preparedOrder.paymentWindowExpiresAt()
         );
     }
 
     @Override
-    public void confirmPayment(UUID orderId, String providerName) {
-        orderPaymentService.confirmPayment(orderId, providerName);
-    }
+    public com.techora.payment.application.port.order.OrderPaymentConfirmationResult confirmPayment(
+            UUID orderId,
+            String providerName) {
 
-    @Override
-    public void markPaymentFailedAndCancelOrder(UUID orderId, String providerName) {
-        orderPaymentService.markPaymentFailedAndCancelOrder(orderId, providerName);
+        return switch (orderPaymentService.confirmPayment(orderId, providerName)) {
+            case CONFIRMED -> com.techora.payment.application.port.order.OrderPaymentConfirmationResult.CONFIRMED;
+            case ALREADY_PAID -> com.techora.payment.application.port.order.OrderPaymentConfirmationResult.ALREADY_PAID;
+            case NOT_PAYABLE -> com.techora.payment.application.port.order.OrderPaymentConfirmationResult.NOT_PAYABLE;
+        };
     }
 }

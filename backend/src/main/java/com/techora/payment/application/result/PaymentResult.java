@@ -13,6 +13,7 @@ public record PaymentResult(
         BigDecimal amount,
         PaymentStatus status,
         String providerReference,
+        Instant expiresAt,
         Instant createdAt,
         Instant updatedAt
 ) {

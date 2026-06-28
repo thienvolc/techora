@@ -2,12 +2,12 @@ package com.techora.payment.controller;
 
 import com.techora.common.application.dto.response.ResponseDto;
 import com.techora.common.application.service.ResponseFactory;
+import com.techora.common.infra.web.ClientIpResolver;
 import com.techora.common.infra.service.UserPrincipal;
 import com.techora.payment.application.command.InitiateVnPayPaymentCommand;
 import com.techora.payment.application.usecase.InitiateVnPayPaymentUseCase;
 import com.techora.payment.controller.request.CreatePaymentRequest;
 import com.techora.payment.controller.response.VnPayInitiatePaymentResponse;
-import com.techora.payment.controller.service.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

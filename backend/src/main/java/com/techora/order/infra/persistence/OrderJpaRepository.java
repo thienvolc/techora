@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -46,6 +47,21 @@ public interface OrderJpaRepository extends JpaRepository<OrderJpaEntity, UUID> 
 
     @EntityGraph(attributePaths = {"user", "items"})
     Page<OrderJpaEntity> findByUserId(UUID userId, Pageable pageable);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select orderEntity from OrderJpaEntity orderEntity
+            join fetch orderEntity.user
+            left join fetch orderEntity.items
+            where orderEntity.status = :status
+              and orderEntity.paymentDeadlineAt <= :now
+            order by orderEntity.paymentDeadlineAt asc
+            """)
+    List<OrderJpaEntity> findExpiredPaymentPendingForUpdate(
+            @Param("status") com.techora.order.domain.entity.OrderStatus status,
+            @Param("now") Instant now,
+            Pageable pageable
+    );
 
     @Query("select orderEntity.status, count(orderEntity) from OrderJpaEntity orderEntity group by orderEntity.status")
     List<Object[]> countOrdersByStatus();

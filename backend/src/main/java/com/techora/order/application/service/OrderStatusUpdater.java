@@ -2,6 +2,7 @@ package com.techora.order.application.service;
 
 import com.techora.common.application.aop.BusinessException;
 import com.techora.common.application.constant.ResponseCode;
+import com.techora.order.application.actor.OrderActor;
 import com.techora.order.application.command.UpdateOrderStatusCommand;
 import com.techora.order.application.eventpublisher.OrderStatusChange;
 import com.techora.order.application.eventpublisher.OrderStatusChangedEventPublisher;
@@ -27,11 +28,20 @@ public class OrderStatusUpdater {
         return statusChange;
     }
 
+    @Transactional
+    public OrderStatusChange update(Order order, OrderStatus nextStatus, OrderActor actor) {
+        OrderStatusChange statusChange = updateStatus(order, nextStatus, actor);
+        statusChangedEventPublisher.publish(statusChange);
+        return statusChange;
+    }
+
     private OrderStatusChange updateStatus(UpdateOrderStatusCommand command) {
         Order order = getOrder(command.orderId());
+        return updateStatus(order, command.nextStatus(), command.actor());
+    }
 
+    private OrderStatusChange updateStatus(Order order, OrderStatus newStatus, OrderActor actor) {
         OrderStatus oldStatus = order.getStatus();
-        OrderStatus newStatus = command.nextStatus();
 
         order.changeStatus(newStatus);
         Order updatedOrder = orderRepository.save(order);
@@ -39,8 +49,8 @@ public class OrderStatusUpdater {
         return new OrderStatusChange(
                 updatedOrder,
                 oldStatus,
-                command.nextStatus(),
-                command.actor()
+                newStatus,
+                actor
         );
     }
 

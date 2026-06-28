@@ -7,8 +7,6 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -30,11 +28,10 @@ class VnPayParamsBuilder {
             DateTimeFormatter.ofPattern("yyyyMMddHHmmss").withZone(VNPAY_TIME_ZONE);
 
     private final VnPayProperties properties;
-    private final Clock clock;
 
     public Map<String, String> build(CreateVnPayPaymentRequest request) {
-        Instant createdAt = clock.instant();
-        Instant expiredAt = createdAt.plus(Duration.ofMinutes(properties.paymentTimeoutMinutes()));
+        Instant createdAt = request.createdAt();
+        Instant expiredAt = request.expiresAt();
 
         Map<String, String> params = new HashMap<>();
         params.put(VnPayParams.VERSION, VERSION);
