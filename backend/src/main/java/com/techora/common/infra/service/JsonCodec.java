@@ -1,6 +1,7 @@
 package com.techora.common.infra.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,14 @@ public class JsonCodec {
     }
 
     public <T> T fromJson(String payload, Class<T> type) {
+        try {
+            return objectMapper.readValue(payload, type);
+        } catch (JsonProcessingException ex) {
+            throw new IllegalStateException("Unable to deserialize JSON value", ex);
+        }
+    }
+
+    public <T> T fromJson(String payload, TypeReference<T> type) {
         try {
             return objectMapper.readValue(payload, type);
         } catch (JsonProcessingException ex) {

@@ -37,8 +37,7 @@ public class InventoryReservationReconciliationService {
 
     @Transactional(readOnly = true)
     public List<InventoryReservationMismatch> findMismatches() {
-        return inventoryReservationRepository.findReservationMismatches()
-                .stream()
+        return inventoryReservationRepository.findReservationMismatches().stream()
                 .map(InventoryReservationMismatch::from)
                 .toList();
     }

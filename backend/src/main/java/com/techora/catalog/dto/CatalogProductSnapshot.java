@@ -1,7 +1,5 @@
 package com.techora.catalog.dto;
 
-import com.techora.catalog.entity.ProductStatus;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
@@ -13,9 +11,14 @@ public record CatalogProductSnapshot(
         String slug,
         String description,
         BigDecimal price,
-        ProductStatus status,
+        String status,
         CatalogCategorySnapshot category,
         Instant createdAt,
         Instant updatedAt
 ) {
+    private static final String INACTIVE = "INACTIVE";
+
+    public boolean isInactive() {
+        return INACTIVE.equals(status) || !category.active();
+    }
 }

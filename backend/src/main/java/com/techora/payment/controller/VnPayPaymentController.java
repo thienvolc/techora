@@ -7,7 +7,6 @@ import com.techora.common.infra.service.UserPrincipal;
 import com.techora.payment.application.command.InitiateVnPayPaymentCommand;
 import com.techora.payment.application.usecase.InitiateVnPayPaymentUseCase;
 import com.techora.payment.controller.request.CreatePaymentRequest;
-import com.techora.payment.controller.response.VnPayInitiatePaymentResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +36,6 @@ public class VnPayPaymentController {
                 .build();
 
         var result = initiateVnPayPaymentUseCase.execute(command);
-        return responseFactory.success(VnPayInitiatePaymentResponse.from(result));
+        return responseFactory.success(result);
     }
 }

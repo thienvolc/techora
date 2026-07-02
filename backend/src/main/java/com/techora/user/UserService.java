@@ -24,7 +24,7 @@ public class UserService {
     private final UserMapper userMapper;
 
     @Transactional
-    public UserEntity createUser(String username, String rawPassword) {
+    public UserSnapshot createUser(String username, String rawPassword) {
         if (userRepository.existsByUsername(username)) {
             throw new BusinessException(ResponseCode.USER_ALREADY_EXISTS);
         }
@@ -32,13 +32,14 @@ public class UserService {
     }
 
     @Transactional
-    public UserEntity createUser(String username, String rawPassword, UserRole role) {
-        return userRepository.save(UserEntity.builder()
+    public UserSnapshot createUser(String username, String rawPassword, UserRole role) {
+        UserEntity user = userRepository.save(UserEntity.builder()
                 .username(username)
                 .passwordHash(passwordEncoder.encode(rawPassword))
                 .role(role)
                 .createdAt(Instant.now())
                 .build());
+        return userMapper.toSnapshot(user);
     }
 
     @Transactional(readOnly = true)
@@ -55,9 +56,4 @@ public class UserService {
                 .orElseThrow(() -> new BusinessException(ResponseCode.USER_NOT_FOUND));
     }
 
-    @Transactional(readOnly = true)
-    public UserEntity getUserOrThrow(UUID userId) {
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ResponseCode.USER_NOT_FOUND));
-    }
 }

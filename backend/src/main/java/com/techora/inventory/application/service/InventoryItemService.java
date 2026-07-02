@@ -1,105 +1,152 @@
 package com.techora.inventory.application.service;
 
-import com.techora.catalog.dto.CatalogProductSnapshot;
-import com.techora.catalog.projection.event.ProductStockProjectionChangedEvent;
-import com.techora.catalog.service.ProductCatalogQueryService;
 import com.techora.common.application.aop.BusinessException;
 import com.techora.common.application.constant.ResponseCode;
 import com.techora.common.application.dto.response.PageResponse;
 import com.techora.common.domain.event.InternalEventPublisher;
 import com.techora.inventory.application.mapper.InventoryItemMapper;
+import com.techora.inventory.application.port.catalog.InventoryCatalogPort;
+import com.techora.inventory.application.port.catalog.InventoryCatalogProduct;
 import com.techora.inventory.application.repository.InventoryItemRepository;
-import com.techora.inventory.application.result.InventoryItemProductResult;
 import com.techora.inventory.application.result.InventoryStockSnapshot;
+import com.techora.inventory.application.view.InventoryProductStockView;
 import com.techora.inventory.domain.entity.InventoryItemEntity;
+import com.techora.inventory.domain.event.InventoryStockChangedEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class InventoryItemService {
     private final InventoryItemRepository inventoryItemRepository;
-    private final ProductCatalogQueryService productCatalogQueryService;
+    private final InventoryCatalogPort inventoryCatalogPort;
     private final InventoryItemMapper inventoryItemMapper;
     private final InternalEventPublisher internalEventPublisher;
+    private final Clock clock;
 
     @Transactional(readOnly = true)
-    public PageResponse<InventoryItemProductResult> getLowStockProducts(int threshold, Pageable pageable) {
-        Page<InventoryItemEntity> items =
-                inventoryItemRepository.findByQuantityOnHandLessThanEqual(threshold, pageable);
-        Map<UUID, CatalogProductSnapshot> productsById = getProductsById(items);
-
-        return new PageResponse<>(
-                items.getContent().stream()
-                        .map(item -> toProductResult(item, productsById))
-                        .toList(),
-                items.getNumber(),
-                items.getSize(),
-                items.getTotalElements(),
-                items.getTotalPages()
-        );
+    public PageResponse<InventoryProductStockView> getLowStockProducts(int threshold, Pageable pageable) {
+        Page<InventoryItemEntity> items = getItemsBelowThreshold(threshold, pageable);
+        Map<UUID, InventoryCatalogProduct> productsById = getProductsForItems(items);
+        return inventoryItemMapper.toPageView(items, productsById);
     }
 
-    private InventoryItemProductResult toProductResult(InventoryItemEntity item,
-                                                       Map<UUID, CatalogProductSnapshot> productsById) {
+    private Page<InventoryItemEntity> getItemsBelowThreshold(int threshold, Pageable pageable) {
+        return inventoryItemRepository.findByQuantityOnHandLessThanEqual(threshold, pageable);
+    }
 
-        CatalogProductSnapshot product = productsById.get(item.getProductId());
-        if (product == null) {
+    private Map<UUID, InventoryCatalogProduct> getProductsForItems(Page<InventoryItemEntity> items) {
+        List<UUID> productIds = extractProductIds(items);
+        Map<UUID, InventoryCatalogProduct> productsById = getProductsByIds(productIds);
+        validateProductsExistForAllIds(productIds, productsById);
+        return productsById;
+    }
+
+    private List<UUID> extractProductIds(Page<InventoryItemEntity> items) {
+        return items.getContent().stream()
+                .map(InventoryItemEntity::getProductId)
+                .toList();
+    }
+
+    private Map<UUID, InventoryCatalogProduct> getProductsByIds(List<UUID> productIds) {
+        return inventoryCatalogPort.getProducts(productIds).stream()
+                .collect(Collectors.toMap(InventoryCatalogProduct::id, Function.identity()));
+    }
+
+    private void validateProductsExistForAllIds(List<UUID> productIds,
+                                                Map<UUID, InventoryCatalogProduct> productsById) {
+
+        if (productsById.size() != productIds.size()) {
             throw new BusinessException(ResponseCode.PRODUCT_NOT_FOUND);
         }
-        return inventoryItemMapper.toProductResult(product, item.getQuantityOnHand());
     }
 
+
     @Transactional
-    public InventoryItemProductResult reduceStock(UUID productId, int quantity) {
-        InventoryStockSnapshot stock = decreaseQuantityOnHand(productId, quantity);
-        CatalogProductSnapshot product = productCatalogQueryService.getProduct(productId);
-        return inventoryItemMapper.toProductResult(product, stock.quantityOnHand());
+    public InventoryProductStockView reduceStock(UUID productId, int quantity) {
+        InventoryItemEntity item = reduceQuantity(productId, quantity);
+        InventoryCatalogProduct product = inventoryCatalogPort.getProduct(productId);
+        publishInventoryStockChanged(item);
+        return inventoryItemMapper.toProductStockView(product, item.getQuantityOnHand());
     }
+
+    private InventoryItemEntity reduceQuantity(UUID productId, int quantity) {
+        InventoryItemEntity item = getLockedItemOrCreate(productId);
+        item.reduce(quantity);
+        return item;
+    }
+
 
     @Transactional
     public InventoryStockSnapshot initializeProductStock(UUID productId, int quantity) {
-        return toStockSnapshot(
-                changeQuantityOnHand(productId, quantity));
+        InventoryItemEntity item = updateQuantity(productId, quantity);
+        publishInventoryStockChanged(item);
+        return inventoryItemMapper.toStockSnapshot(item);
     }
 
-    @Transactional
-    public void reserve(UUID productId, int quantity) {
+    private InventoryItemEntity updateQuantity(UUID productId, int quantity) {
         InventoryItemEntity item = getLockedItemOrCreate(productId);
-        validateAvailableQuantity(item, quantity);
+        item.updateQuantityOnHand(quantity);
+        return item;
+    }
+
+
+    @Transactional
+    public void reserveStock(UUID productId, int quantity) {
+        InventoryItemEntity item = reserveQuantity(productId, quantity);
+        publishInventoryStockChanged(item);
+    }
+
+    private InventoryItemEntity reserveQuantity(UUID productId, int quantity) {
+        InventoryItemEntity item = getLockedItemOrCreate(productId);
         item.reserve(quantity);
-        publishStockProjectionChanged(item);
+        return item;
     }
 
+
     @Transactional
-    public InventoryStockSnapshot confirmReserved(UUID productId, int quantity) {
-        InventoryItemEntity item = getLockedItemOrCreate(productId);
-        try {
-            item.confirmReserved(quantity);
-        } catch (IllegalArgumentException ex) {
-            throw new BusinessException(ResponseCode.INSUFFICIENT_STOCK);
-        }
-        publishStockProjectionChanged(item);
-        return toStockSnapshot(item);
+    public InventoryStockSnapshot confirmReservedStock(UUID productId, int quantity) {
+        InventoryItemEntity item = confirmReservedQuantity(productId, quantity);
+        publishInventoryStockChanged(item);
+        return inventoryItemMapper.toStockSnapshot(item);
     }
+
+    private InventoryItemEntity confirmReservedQuantity(UUID productId, int quantity) {
+        InventoryItemEntity item = getLockedItemOrCreate(productId);
+        item.confirmReserved(quantity);
+        return item;
+    }
+
 
     @Transactional
     public void releaseReserved(UUID productId, int quantity) {
+        InventoryItemEntity item = releaseReservedQuantity(productId, quantity);
+        publishInventoryStockChanged(item);
+    }
+
+    private InventoryItemEntity releaseReservedQuantity(UUID productId, int quantity) {
         InventoryItemEntity item = getLockedItemOrCreate(productId);
-        try {
-            item.releaseReserved(quantity);
-        } catch (IllegalArgumentException ex) {
-            throw new BusinessException(ResponseCode.INSUFFICIENT_STOCK);
-        }
-        publishStockProjectionChanged(item);
+        item.releaseReserved(quantity);
+        return item;
+    }
+
+
+    private void publishInventoryStockChanged(InventoryItemEntity item) {
+        internalEventPublisher.publish(InventoryStockChangedEvent.of(
+                item.getProductId(),
+                item.availableQuantity(),
+                item.getUpdatedAt()));
     }
 
     private InventoryItemEntity getLockedItemOrCreate(UUID productId) {
@@ -107,36 +154,9 @@ public class InventoryItemService {
                 .orElseGet(() -> createItemFromProduct(productId));
     }
 
-    private InventoryItemEntity changeQuantityOnHand(UUID productId, int quantity) {
-        if (quantity < 0) {
-            throw new BusinessException(ResponseCode.INSUFFICIENT_STOCK);
-        }
-
-        InventoryItemEntity item = getLockedItemOrCreate(productId);
-        try {
-            item.changeQuantityOnHand(quantity);
-        } catch (IllegalArgumentException ex) {
-            throw new BusinessException(ResponseCode.INSUFFICIENT_STOCK);
-        }
-        publishStockProjectionChanged(item);
-        return item;
-    }
-
-    private InventoryStockSnapshot decreaseQuantityOnHand(UUID productId, int quantity) {
-        InventoryItemEntity item = getLockedItemOrCreate(productId);
-        validateAvailableQuantity(item, quantity);
-        try {
-            item.reduce(quantity);
-        } catch (IllegalArgumentException ex) {
-            throw new BusinessException(ResponseCode.INSUFFICIENT_STOCK);
-        }
-        publishStockProjectionChanged(item);
-        return toStockSnapshot(item);
-    }
-
     private InventoryItemEntity createItemFromProduct(UUID productId) {
-        CatalogProductSnapshot product = productCatalogQueryService.getProduct(productId);
-        Instant now = Instant.now();
+        InventoryCatalogProduct product = inventoryCatalogPort.getProduct(productId);
+        Instant now = now();
         return inventoryItemRepository.save(InventoryItemEntity.builder()
                 .productId(product.id())
                 .quantityOnHand(0)
@@ -146,34 +166,7 @@ public class InventoryItemService {
                 .build());
     }
 
-    private void validateAvailableQuantity(InventoryItemEntity item, int requestedQuantity) {
-        if (requestedQuantity <= 0 || item.availableQuantity() < requestedQuantity) {
-            throw new BusinessException(ResponseCode.INSUFFICIENT_STOCK);
-        }
-    }
-
-    private Map<UUID, CatalogProductSnapshot> getProductsById(Page<InventoryItemEntity> items) {
-        return productCatalogQueryService.getProducts(items.getContent().stream()
-                        .map(InventoryItemEntity::getProductId)
-                        .toList())
-                .stream()
-                .collect(Collectors.toMap(CatalogProductSnapshot::id, product -> product));
-    }
-
-    private InventoryStockSnapshot toStockSnapshot(InventoryItemEntity item) {
-        return new InventoryStockSnapshot(
-                item.getProductId(),
-                item.getQuantityOnHand(),
-                item.getReservedQuantity(),
-                item.availableQuantity(),
-                item.getUpdatedAt()
-        );
-    }
-
-    private void publishStockProjectionChanged(InventoryItemEntity item) {
-        internalEventPublisher.publish(ProductStockProjectionChangedEvent.of(
-                item.getProductId(),
-                item.availableQuantity(),
-                item.getUpdatedAt()));
+    private Instant now() {
+        return Instant.now(clock);
     }
 }

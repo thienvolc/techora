@@ -1,6 +1,7 @@
 package com.techora.payment.application.mapper;
 
-import com.techora.payment.application.result.PaymentResult;
+import com.techora.payment.application.model.PaymentDetails;
+import com.techora.payment.application.model.VnPayReturnDetails;
 import com.techora.payment.domain.entity.Payment;
 import com.techora.payment.domain.entity.PaymentAttempt;
 import com.techora.payment.domain.valueobject.PaymentStatus;
@@ -8,22 +9,36 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class PaymentMapper {
-    public PaymentResult toResult(Payment payment) {
-        return new PaymentResult(
+    public PaymentDetails toDetails(Payment payment) {
+        return new PaymentDetails(
                 payment.getId(),
                 payment.getOrderId(),
                 payment.getUserId(),
                 payment.getAmount(),
                 payment.getStatus(),
                 null,
-                payment.getPaymentWindowExpiresAt(),
+                payment.getOrderPaymentDeadlineAt(),
                 payment.getCreatedAt(),
                 payment.getUpdatedAt()
         );
     }
 
-    public PaymentResult toResult(Payment payment, PaymentAttempt attempt) {
-        return new PaymentResult(
+    public VnPayReturnDetails toReturnDetails(Payment payment, PaymentAttempt attempt) {
+        PaymentStatus status = statusFor(payment, attempt);
+        String message = messageFor(status);
+
+        return new VnPayReturnDetails(
+                payment.getId(),
+                payment.getOrderId(),
+                payment.getAmount(),
+                status,
+                attempt.getExpiresAt(),
+                message
+        );
+    }
+
+    public PaymentDetails toDetails(Payment payment, PaymentAttempt attempt) {
+        return new PaymentDetails(
                 payment.getId(),
                 payment.getOrderId(),
                 payment.getUserId(),
@@ -48,6 +63,19 @@ public class PaymentMapper {
             case EXPIRED -> PaymentStatus.EXPIRED;
             case CANCELLED -> PaymentStatus.CANCELLED;
             case RECONCILIATION_REQUIRED -> PaymentStatus.RECONCILIATION_REQUIRED;
+        };
+    }
+
+    private static String messageFor(PaymentStatus status) {
+        return switch (status) {
+            case PAID -> "Payment confirmed";
+            case FAILED -> "Payment failed";
+            case EXPIRED -> "Payment expired";
+            case CANCELLED -> "Payment cancelled";
+            case PENDING -> "Payment is waiting for VNPAY confirmation";
+            case RECONCILIATION_REQUIRED -> "Payment received and requires manual verification";
+            case REFUNDED -> "Payment refunded";
+            default -> "Payment status is unknown";
         };
     }
 }

@@ -1,7 +1,7 @@
 package com.techora.catalog.mapper;
 
+import com.techora.catalog.application.view.CategoryView;
 import com.techora.catalog.dto.request.CategoryRequest;
-import com.techora.catalog.dto.response.CategoryResponse;
 import com.techora.catalog.entity.CategoryEntity;
 import org.springframework.stereotype.Service;
 
@@ -10,8 +10,8 @@ import java.time.Instant;
 @Service
 public class CategoryMapper {
 
-    public CategoryResponse toResponse(CategoryEntity entity) {
-        return new CategoryResponse(
+    public CategoryView toView(CategoryEntity entity) {
+        return new CategoryView(
                 entity.getId(),
                 entity.getName(),
                 entity.getSlug(),

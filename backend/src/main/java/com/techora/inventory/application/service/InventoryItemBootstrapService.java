@@ -1,7 +1,6 @@
 package com.techora.inventory.application.service;
 
-import com.techora.catalog.dto.CatalogProductSnapshot;
-import com.techora.catalog.service.ProductCatalogQueryService;
+import com.techora.inventory.application.port.catalog.InventoryCatalogPort;
 import com.techora.inventory.application.repository.InventoryItemRepository;
 import com.techora.inventory.domain.entity.InventoryItemEntity;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +19,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class InventoryItemBootstrapService implements ApplicationRunner {
 
-    private final ProductCatalogQueryService productCatalogQueryService;
+    private final InventoryCatalogPort inventoryCatalogPort;
     private final InventoryItemRepository inventoryItemRepository;
 
     @Override
@@ -28,16 +27,16 @@ public class InventoryItemBootstrapService implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         Set<UUID> existingProductIds = inventoryItemRepository.findExistingProductIds();
 
-        productCatalogQueryService.getAllProducts().stream()
+        inventoryCatalogPort.getAllProducts().stream()
                 .filter(product -> !existingProductIds.contains(product.id()))
-                .map(this::toInitialItem)
+                .map(product -> toInitialItem(product.id()))
                 .forEach(inventoryItemRepository::save);
     }
 
-    private InventoryItemEntity toInitialItem(CatalogProductSnapshot product) {
+    private InventoryItemEntity toInitialItem(UUID productId) {
         Instant now = Instant.now();
         return InventoryItemEntity.builder()
-                .productId(product.id())
+                .productId(productId)
                 .quantityOnHand(0)
                 .reservedQuantity(0)
                 .createdAt(now)

@@ -1,9 +1,9 @@
 package com.techora.catalog.service;
 
+import com.techora.catalog.application.view.CategoryView;
 import com.techora.common.application.aop.BusinessException;
 import com.techora.catalog.projection.event.CategoryProjectionChangedEvent;
 import com.techora.catalog.dto.request.CategoryRequest;
-import com.techora.catalog.dto.response.CategoryResponse;
 import com.techora.catalog.entity.CategoryEntity;
 import com.techora.catalog.mapper.CategoryMapper;
 import com.techora.catalog.repository.CategoryRepository;
@@ -32,28 +32,28 @@ public class CategoryService {
 
     @Transactional
     @CacheEvict(cacheNames = CacheNames.ACTIVE_CATEGORIES, allEntries = true)
-    public CategoryResponse create(CategoryRequest request) {
+    public CategoryView create(CategoryRequest request) {
         String name = request.name();
         String slug = SlugGenerator.generate(name);
         validateUniqueCategoryOrThrow(name, slug);
 
         CategoryEntity category = mapper.toEntity(request, slug);
-        return mapper.toResponse(
+        return mapper.toView(
                 repository.save(category));
     }
 
     @Transactional(readOnly = true)
-    public List<CategoryResponse> getAll() {
+    public List<CategoryView> getAll() {
         return repository.findAll(NAME_ASCENDING).stream()
-                .map(mapper::toResponse)
+                .map(mapper::toView)
                 .toList();
     }
 
     @Transactional(readOnly = true)
     @Cacheable(cacheNames = CacheNames.ACTIVE_CATEGORIES)
-    public List<CategoryResponse> getActiveCategories() {
+    public List<CategoryView> getActiveCategories() {
         return repository.findByActiveTrueOrderByNameAsc().stream()
-                .map(mapper::toResponse)
+                .map(mapper::toView)
                 .toList();
     }
 
@@ -65,7 +65,7 @@ public class CategoryService {
 
     @Transactional
     @CacheEvict(cacheNames = CacheNames.ACTIVE_CATEGORIES, allEntries = true)
-    public CategoryResponse update(UUID categoryId, CategoryRequest request) {
+    public CategoryView update(UUID categoryId, CategoryRequest request) {
         String name = request.name();
         String slug = SlugGenerator.generate(name);
         validateUniqueCategoryOrThrow(
@@ -80,7 +80,7 @@ public class CategoryService {
                 slug);
         CategoryEntity savedCategory = repository.save(category);
         internalEventPublisher.publish(CategoryProjectionChangedEvent.of(savedCategory.getId()));
-        return mapper.toResponse(savedCategory);
+        return mapper.toView(savedCategory);
     }
 
     @Transactional

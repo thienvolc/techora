@@ -1,57 +1,74 @@
 package com.techora.payment.application.usecase;
 
 import com.techora.common.application.aop.BusinessException;
-import com.techora.payment.application.command.ApplyProviderPaymentResultCommand;
 import com.techora.payment.application.command.HandleVnPayIpnCommand;
+import com.techora.payment.application.command.ProcessPaymentResultCommand;
 import com.techora.payment.application.exception.InvalidVnPayPayloadException;
 import com.techora.payment.application.exception.InvalidVnPaySignatureException;
-import com.techora.payment.application.policy.VnPayIpnResponsePolicy;
+import com.techora.payment.application.model.VnPayIpnReply;
+import com.techora.payment.application.model.WebhookProcessResult;
+import com.techora.payment.application.policy.VnPayIpnReplyPolicy;
+import com.techora.payment.application.port.gateway.VerifiedVnPayIpn;
 import com.techora.payment.application.port.gateway.VnPayGatewayPort;
-import com.techora.payment.application.port.gateway.VnPayPaymentResult;
-import com.techora.payment.application.result.VnPayIpnResult;
-import com.techora.payment.application.service.PaymentProvider;
-import com.techora.payment.application.service.ProviderPaymentResultApplier;
+import com.techora.payment.application.service.PaymentWebhookProcessor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import java.time.Clock;
+import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
 public class HandleVnPayIpnUseCase {
-    private static final PaymentProvider PROVIDER_NAME = PaymentProvider.VNPAY;
 
     private final VnPayGatewayPort vnPayGatewayPort;
-    private final VnPayIpnResponsePolicy vnPayIpnResponsePolicy;
-    private final ProviderPaymentResultApplier providerPaymentResultApplier;
+    private final VnPayIpnReplyPolicy vnPayIpnReplyPolicy;
+    private final PaymentWebhookProcessor webhookProcessor;
+    private final Clock clock;
 
-    public VnPayIpnResult execute(HandleVnPayIpnCommand command) {
+    public VnPayIpnReply execute(HandleVnPayIpnCommand command) {
         try {
-            VnPayPaymentResult result = verifyIpn(command);
-            applyPaymentResult(result);
-            return vnPayIpnResponsePolicy.success();
+            VerifiedVnPayIpn verifiedIpn = verifyIpn(command);
+            WebhookProcessResult result = processWebhook(verifiedIpn);
+
+            return mapToVnPayReply(result);
         } catch (InvalidVnPaySignatureException | InvalidVnPayPayloadException ex) {
-            return vnPayIpnResponsePolicy.signatureFailed();
+            return vnPayIpnReplyPolicy.signatureFailed();
         } catch (BusinessException ex) {
-            return vnPayIpnResponsePolicy.fromBusinessException(ex);
+            return vnPayIpnReplyPolicy.fromBusinessException(ex);
         } catch (RuntimeException ex) {
-            return vnPayIpnResponsePolicy.unknownError();
+            return vnPayIpnReplyPolicy.unknownError();
         }
     }
 
-    private VnPayPaymentResult verifyIpn(HandleVnPayIpnCommand command) {
+    private VerifiedVnPayIpn verifyIpn(HandleVnPayIpnCommand command) {
         return vnPayGatewayPort.verifyAndParseIpn(command.params());
     }
 
-    private void applyPaymentResult(VnPayPaymentResult result) {
-        providerPaymentResultApplier.apply(
-                new ApplyProviderPaymentResultCommand(
-                        result.txnRef(),
-                        result.amount(),
-                        result.isSuccess(),
-                        result.responseCode(),
-                        result.providerStatusCode(),
-                        result.providerTransactionId(),
-                        result.rawPayload(),
-                        PROVIDER_NAME
+    private WebhookProcessResult processWebhook(VerifiedVnPayIpn verifiedIpn) {
+        Instant receivedAt = now();
+        return webhookProcessor.process(
+                new ProcessPaymentResultCommand(
+                        verifiedIpn.txnRef(),
+                        verifiedIpn.amount(),
+                        verifiedIpn.isSuccess(),
+                        verifiedIpn.responseCode(),
+                        verifiedIpn.providerStatusCode(),
+                        verifiedIpn.providerTransactionId(),
+                        verifiedIpn.rawPayload(),
+                        receivedAt
                 ));
+    }
+
+    private VnPayIpnReply mapToVnPayReply(WebhookProcessResult result) {
+        return switch (result) {
+            case SUCCESS, ALREADY_HANDLED -> vnPayIpnReplyPolicy.success();
+            case AMOUNT_MISMATCH -> vnPayIpnReplyPolicy.invalidAmount();
+            case PAYMENT_NOT_FOUND -> vnPayIpnReplyPolicy.orderNotFound();
+        };
+    }
+
+    private Instant now() {
+        return Instant.now(clock);
     }
 }

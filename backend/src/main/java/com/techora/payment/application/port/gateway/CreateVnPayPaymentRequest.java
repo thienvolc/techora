@@ -1,6 +1,6 @@
 package com.techora.payment.application.port.gateway;
 
-import com.techora.payment.application.result.PaymentResult;
+import com.techora.payment.application.model.PaymentDetails;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -15,17 +15,17 @@ public record CreateVnPayPaymentRequest(
 ) {
 
     public static CreateVnPayPaymentRequest from(
-            PaymentResult paymentResult,
+            PaymentDetails payment,
             String ipAddress,
             String orderInfo) {
 
         return new CreateVnPayPaymentRequest(
-                paymentResult.amount(),
-                paymentResult.providerReference(),
+                payment.amount(),
+                payment.providerReference(),
                 orderInfo,
                 ipAddress,
-                paymentResult.createdAt(),
-                paymentResult.expiresAt()
+                payment.createdAt(),
+                payment.expiresAt()
         );
     }
 }

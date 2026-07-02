@@ -1,18 +1,44 @@
 package com.techora.inventory.application.mapper;
 
-import com.techora.catalog.dto.CatalogProductSnapshot;
-import com.techora.catalog.dto.CatalogCategorySnapshot;
-import com.techora.catalog.dto.response.CategoryResponse;
-import com.techora.catalog.dto.response.ProductResponse;
 import com.techora.common.application.dto.response.PageResponse;
-import com.techora.inventory.application.result.InventoryItemProductResult;
+import com.techora.inventory.application.port.catalog.InventoryCatalogProduct;
+import com.techora.inventory.application.result.InventoryStockSnapshot;
+import com.techora.inventory.application.view.InventoryCategoryView;
+import com.techora.inventory.application.view.InventoryProductStockView;
+import com.techora.inventory.domain.entity.InventoryItemEntity;
+import lombok.NonNull;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class InventoryItemMapper {
 
-    public InventoryItemProductResult toProductResult(CatalogProductSnapshot product, int quantityOnHand) {
-        return new InventoryItemProductResult(
+    public PageResponse<InventoryProductStockView> toPageView(
+            Page<InventoryItemEntity> items,
+            Map<UUID, InventoryCatalogProduct> productsById) {
+
+        List<InventoryProductStockView> productItems = items.getContent().stream()
+                .map(item -> toProductStockView(
+                        productsById.get(item.getProductId()),
+                        item.getQuantityOnHand()
+                ))
+                .toList();
+
+        return new PageResponse<>(
+                productItems,
+                items.getNumber(),
+                items.getSize(),
+                items.getTotalElements(),
+                items.getTotalPages()
+        );
+    }
+
+    public InventoryProductStockView toProductStockView(@NonNull InventoryCatalogProduct product, int quantityOnHand) {
+        return new InventoryProductStockView(
                 product.id(),
                 product.name(),
                 product.sku(),
@@ -21,49 +47,19 @@ public class InventoryItemMapper {
                 product.price(),
                 quantityOnHand,
                 product.status(),
-                product.category(),
+                InventoryCategoryView.from(product.category()),
                 product.createdAt(),
                 product.updatedAt()
         );
     }
 
-    public ProductResponse toProductResponse(InventoryItemProductResult result) {
-        return new ProductResponse(
-                result.productId(),
-                result.name(),
-                result.sku(),
-                result.slug(),
-                result.description(),
-                result.price(),
-                result.quantityOnHand(),
-                result.status(),
-                toCategoryResponse(result.category()),
-                result.createdAt(),
-                result.updatedAt()
-        );
-    }
-
-    private CategoryResponse toCategoryResponse(CatalogCategorySnapshot category) {
-        return new CategoryResponse(
-                category.id(),
-                category.name(),
-                category.slug(),
-                category.description(),
-                category.active(),
-                category.createdAt(),
-                category.updatedAt()
-        );
-    }
-
-    public PageResponse<ProductResponse> toProductResponsePage(PageResponse<InventoryItemProductResult> page) {
-        return new PageResponse<>(
-                page.items().stream()
-                        .map(this::toProductResponse)
-                        .toList(),
-                page.page(),
-                page.size(),
-                page.totalItems(),
-                page.totalPages()
+    public InventoryStockSnapshot toStockSnapshot(InventoryItemEntity item) {
+        return new InventoryStockSnapshot(
+                item.getProductId(),
+                item.getQuantityOnHand(),
+                item.getReservedQuantity(),
+                item.availableQuantity(),
+                item.getUpdatedAt()
         );
     }
 }

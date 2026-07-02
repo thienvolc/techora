@@ -6,5 +6,5 @@ public interface OrderPaymentPort {
 
     PreparedOrderForPayment preparePayment(UUID userId, UUID orderId);
 
-    OrderPaymentConfirmationResult confirmPayment(UUID orderId, String providerName);
+    PaymentConfirmationResult confirmPayment(UUID orderId, String providerName);
 }

@@ -5,6 +5,7 @@ import com.techora.outbox.constant.OutboxEventStatus;
 import com.techora.outbox.constant.OutboxEventType;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.domain.Persistable;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -12,6 +13,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "outbox_events", indexes = {
         @Index(name = "idx_outbox_events_status_next_attempt", columnList = "status, next_attempt_at"),
+        @Index(name = "idx_outbox_events_status_next_attempt_created", columnList = "status, next_attempt_at, created_at"),
         @Index(name = "idx_outbox_events_aggregate", columnList = "aggregate_type, aggregate_id")
 })
 @Getter
@@ -19,10 +21,12 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class OutboxEventEntity {
+public class OutboxEventEntity implements Persistable<UUID> {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    @Column(name = "event_id", nullable = false)
+    private UUID eventId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "aggregate_type", nullable = false, length = 40)
@@ -34,6 +38,18 @@ public class OutboxEventEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "event_type", nullable = false, length = 60)
     private OutboxEventType eventType;
+
+    @Column(nullable = false, length = 200)
+    private String topic;
+
+    @Column(name = "message_key", nullable = false, length = 120)
+    private String messageKey;
+
+    @Column(name = "event_version", nullable = false)
+    private int eventVersion;
+
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String headers;
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String payload;
@@ -68,6 +84,21 @@ public class OutboxEventEntity {
 
     @Column(name = "locked_by", length = 120)
     private String lockedBy;
+
+    @Transient
+    @Builder.Default
+    private boolean newEvent = true;
+
+    @Override
+    public boolean isNew() {
+        return newEvent;
+    }
+
+    @PostLoad
+    @PostPersist
+    void markNotNew() {
+        newEvent = false;
+    }
 
     public void markProcessing(String instanceId, Instant now) {
         status = OutboxEventStatus.PROCESSING;

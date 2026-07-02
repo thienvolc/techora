@@ -6,6 +6,7 @@ import com.techora.payment.domain.exception.PaymentAlreadyExistsException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -17,6 +18,7 @@ public class PaymentRepositoryImpl implements PaymentRepository {
     private final PaymentJpaRepository jpaRepository;
 
     @Override
+    @Transactional
     public Payment save(Payment payment) {
         try {
             return jpaRepository.save(PaymentJpaEntity.fromDomain(payment))
@@ -51,6 +53,7 @@ public class PaymentRepositoryImpl implements PaymentRepository {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<Payment> findLockedByOrderIdAndUserId(UUID orderId, UUID userId) {
         return jpaRepository.findLockedByOrderIdAndUserId(orderId, userId)
                 .map(PaymentJpaEntity::toDomain);

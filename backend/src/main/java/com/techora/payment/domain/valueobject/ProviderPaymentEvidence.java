@@ -1,5 +1,6 @@
 package com.techora.payment.domain.valueobject;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 public record ProviderPaymentEvidence(
@@ -7,6 +8,7 @@ public record ProviderPaymentEvidence(
         String providerStatusCode,
         String providerTransactionId,
         String rawPayload,
-        Instant receivedAt
+        Instant receivedAt,
+        BigDecimal amount
 ) {
 }

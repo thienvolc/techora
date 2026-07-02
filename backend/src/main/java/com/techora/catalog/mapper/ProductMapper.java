@@ -1,15 +1,15 @@
 package com.techora.catalog.mapper;
 
+import com.techora.catalog.application.view.ProductView;
 import com.techora.common.application.dto.response.PageResponse;
 import com.techora.catalog.dto.CatalogCategorySnapshot;
 import com.techora.catalog.dto.CatalogProductSnapshot;
-import com.techora.catalog.dto.ProductSnapshot;
 import com.techora.catalog.projection.dto.CategoryProjectionSnapshot;
 import com.techora.catalog.projection.dto.ProductProjectionSnapshot;
 import com.techora.catalog.entity.CategoryEntity;
 import com.techora.catalog.dto.request.CreateProductRequest;
-import com.techora.catalog.dto.response.ProductResponse;
 import com.techora.catalog.entity.ProductEntity;
+import com.techora.catalog.entity.ProductStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
@@ -23,8 +23,8 @@ import java.util.UUID;
 public class ProductMapper {
     private final CategoryMapper categoryMapper;
 
-    public ProductResponse toResponse(ProductEntity entity, int stockQuantity) {
-        return new ProductResponse(
+    public ProductView toView(ProductEntity entity, int stockQuantity) {
+        return new ProductView(
                 entity.getId(),
                 entity.getName(),
                 entity.getSku(),
@@ -32,19 +32,19 @@ public class ProductMapper {
                 entity.getDescription(),
                 entity.getPrice(),
                 stockQuantity,
-                entity.getStatus(),
-                categoryMapper.toResponse(entity.getCategory()),
+                entity.getStatus().name(),
+                categoryMapper.toView(entity.getCategory()),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()
         );
     }
 
-    public PageResponse<ProductResponse> toPageResponse(Page<ProductEntity> page,
-                                                        Map<UUID, Integer> stockQuantities) {
+    public PageResponse<ProductView> toPageView(Page<ProductEntity> page,
+                                                Map<UUID, Integer> stockQuantities) {
 
         return new PageResponse<>(
                 page.getContent().stream()
-                        .map(product -> toResponse(
+                        .map(product -> toView(
                                 product,
                                 stockQuantities.getOrDefault(product.getId(), 0)))
                         .toList(),
@@ -52,18 +52,6 @@ public class ProductMapper {
                 page.getSize(),
                 page.getTotalElements(),
                 page.getTotalPages()
-        );
-    }
-
-    public ProductSnapshot toSnapshot(ProductEntity entity) {
-        return new ProductSnapshot(
-                entity.getId(),
-                entity.getName(),
-                entity.getSku(),
-                entity.getSlug(),
-                entity.getPrice(),
-                entity.getStatus(),
-                entity.getCategory().isActive()
         );
     }
 
@@ -75,7 +63,7 @@ public class ProductMapper {
                 entity.getSlug(),
                 entity.getDescription(),
                 entity.getPrice(),
-                entity.getStatus(),
+                entity.getStatus().name(),
                 toCategorySnapshot(entity.getCategory()),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()
@@ -124,7 +112,8 @@ public class ProductMapper {
 
     public ProductEntity toEntity(CreateProductRequest request,
                                   CategoryEntity category,
-                                  String slug) {
+                                  String slug,
+                                  ProductStatus status) {
 
         Instant now = Instant.now();
         return ProductEntity.builder()
@@ -133,7 +122,7 @@ public class ProductMapper {
                 .slug(slug)
                 .description(request.description())
                 .price(request.price())
-                .status(request.status())
+                .status(status)
                 .category(category)
                 .createdAt(now)
                 .updatedAt(now)

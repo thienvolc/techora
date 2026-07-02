@@ -1,9 +1,8 @@
 package com.techora.order.controller.request;
 
-import com.techora.order.domain.entity.OrderStatus;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 
 public record UpdateOrderStatusRequest(
-        @NotNull OrderStatus status
+        @NotBlank String status
 ) {
 }

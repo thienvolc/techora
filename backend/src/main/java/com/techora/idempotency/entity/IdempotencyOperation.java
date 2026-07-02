@@ -1,6 +1,6 @@
 package com.techora.idempotency.entity;
 
 public enum IdempotencyOperation {
-    CHECKOUT,
+    PLACE_ORDER,
     INITIATE_VNPAY_PAYMENT
 }

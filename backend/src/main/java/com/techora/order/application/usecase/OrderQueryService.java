@@ -4,8 +4,8 @@ import com.techora.common.application.aop.BusinessException;
 import com.techora.common.application.constant.ResponseCode;
 import com.techora.common.application.dto.response.PageResponse;
 import com.techora.order.application.mapper.OrderMapper;
+import com.techora.order.application.model.OrderView;
 import com.techora.order.application.port.persistence.OrderRepository;
-import com.techora.order.application.result.OrderResult;
 import com.techora.order.domain.entity.Order;
 import com.techora.order.domain.entity.OrderStatus;
 import lombok.RequiredArgsConstructor;
@@ -24,20 +24,20 @@ public class OrderQueryService {
     private final OrderMapper orderMapper;
 
     @Transactional(readOnly = true)
-    public PageResponse<OrderResult> getUserOrders(UUID userId, Pageable pageable) {
+    public PageResponse<OrderView> getUserOrders(UUID userId, Pageable pageable) {
         Page<Order> orders = orderRepository.findByUserId(userId, pageable);
-        return orderMapper.toPageResult(orders);
+        return orderMapper.toPageView(orders);
     }
 
     @Transactional(readOnly = true)
-    public OrderResult getUserOrder(UUID userId, UUID orderId) {
-        return orderMapper.toResult(
+    public OrderView getUserOrder(UUID userId, UUID orderId) {
+        return orderMapper.toView(
                 getUserOrderOrThrow(userId, orderId));
     }
 
     @Transactional(readOnly = true)
-    public OrderResult getAdminOrder(UUID orderId) {
-        return orderMapper.toResult(
+    public OrderView getAdminOrder(UUID orderId) {
+        return orderMapper.toView(
                 getOrderOrThrow(orderId));
     }
 

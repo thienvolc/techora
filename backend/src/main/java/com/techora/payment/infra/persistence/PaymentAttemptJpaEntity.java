@@ -2,6 +2,7 @@ package com.techora.payment.infra.persistence;
 
 import com.techora.payment.domain.entity.PaymentAttempt;
 import com.techora.payment.domain.valueobject.PaymentAttemptStatus;
+import com.techora.payment.domain.valueobject.PaymentProvider;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -94,21 +95,21 @@ public class PaymentAttemptJpaEntity {
                 .paymentId(attempt.getPaymentId())
                 .orderId(attempt.getOrderId())
                 .userId(attempt.getUserId())
-                .providerName(attempt.getProviderName())
+                .providerName(attempt.getProviderName().name())
                 .providerReference(attempt.getProviderReference())
                 .amount(attempt.getAmount())
                 .status(attempt.getStatus())
                 .providerResponseCode(attempt.getProviderResponseCode())
                 .providerStatusCode(attempt.getProviderStatusCode())
                 .providerTransactionId(attempt.getProviderTransactionId())
-                .rawProviderPayload(attempt.getRawProviderPayload())
+                .rawProviderPayload(attempt.getProviderRawPayload())
                 .providerResultReceivedAt(attempt.getProviderResultReceivedAt())
                 .expiresAt(attempt.getExpiresAt())
                 .paidAt(attempt.getPaidAt())
                 .failedAt(attempt.getFailedAt())
                 .expiredAt(attempt.getExpiredAt())
                 .reconciliationResolvedAt(attempt.getReconciliationResolvedAt())
-                .reconciliationResolutionNote(attempt.getReconciliationResolutionNote())
+                .reconciliationResolutionNote(attempt.getReconciliationNote())
                 .createdAt(attempt.getCreatedAt())
                 .updatedAt(attempt.getUpdatedAt())
                 .build();
@@ -120,21 +121,21 @@ public class PaymentAttemptJpaEntity {
                 .paymentId(paymentId)
                 .orderId(orderId)
                 .userId(userId)
-                .providerName(providerName)
+                .providerName(PaymentProvider.valueOf(providerName))
                 .providerReference(providerReference)
                 .amount(amount)
                 .status(status)
                 .providerResponseCode(providerResponseCode)
                 .providerStatusCode(providerStatusCode)
                 .providerTransactionId(providerTransactionId)
-                .rawProviderPayload(rawProviderPayload)
+                .providerRawPayload(rawProviderPayload)
                 .providerResultReceivedAt(providerResultReceivedAt)
                 .expiresAt(expiresAt)
                 .paidAt(paidAt)
                 .failedAt(failedAt)
                 .expiredAt(expiredAt)
                 .reconciliationResolvedAt(reconciliationResolvedAt)
-                .reconciliationResolutionNote(reconciliationResolutionNote)
+                .reconciliationNote(reconciliationResolutionNote)
                 .createdAt(createdAt)
                 .updatedAt(updatedAt)
                 .build();

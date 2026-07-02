@@ -1,7 +1,7 @@
 package com.techora.catalog.service;
 
 
-import com.techora.catalog.dto.ProductSnapshot;
+import com.techora.catalog.dto.CatalogProductSnapshot;
 import com.techora.catalog.entity.ProductEntity;
 import com.techora.catalog.mapper.ProductMapper;
 import com.techora.catalog.repository.ProductRepository;
@@ -20,10 +20,10 @@ public class ProductAvailabilityService {
     private final ProductMapper productMapper;
 
     @Transactional
-    public ProductSnapshot getLockedActiveProductOrThrow(UUID productId) {
+    public CatalogProductSnapshot getLockedActiveProductOrThrow(UUID productId) {
         ProductEntity product = getLockedProductOrThrow(productId);
         validateActive(product);
-        return productMapper.toSnapshot(product);
+        return productMapper.toCatalogSnapshot(product);
     }
 
     private void validateActive(ProductEntity product) {

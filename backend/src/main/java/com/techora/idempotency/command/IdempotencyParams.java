@@ -17,7 +17,7 @@ public record IdempotencyParams(
                         "Idempotency attributes are required"));
     }
 
-    public static IdempotencyParams checkout(UUID userId) {
+    public static IdempotencyParams placeOrder(UUID userId) {
         return new IdempotencyParams(
                 Map.of(
                         USER_ID, userId));

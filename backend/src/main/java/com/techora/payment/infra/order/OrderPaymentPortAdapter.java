@@ -1,8 +1,9 @@
 package com.techora.payment.infra.order;
 
-import com.techora.order.application.payment.OrderPaymentService;
-import com.techora.order.application.payment.PaymentPreparedOrder;
+import com.techora.order.application.service.payment.OrderPaymentService;
+import com.techora.order.application.service.payment.PayableOrderSnapshot;
 import com.techora.payment.application.port.order.OrderPaymentPort;
+import com.techora.payment.application.port.order.PaymentConfirmationResult;
 import com.techora.payment.application.port.order.PreparedOrderForPayment;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,25 +18,24 @@ public class OrderPaymentPortAdapter implements OrderPaymentPort {
 
     @Override
     public PreparedOrderForPayment preparePayment(UUID userId, UUID orderId) {
-        PaymentPreparedOrder preparedOrder = orderPaymentService.preparePayment(userId, orderId);
+        PayableOrderSnapshot payableOrder = orderPaymentService.preparePayment(userId, orderId);
         return new PreparedOrderForPayment(
-                preparedOrder.orderId(),
-                preparedOrder.userId(),
-                preparedOrder.username(),
-                preparedOrder.total(),
-                preparedOrder.paymentWindowExpiresAt()
+                payableOrder.orderId(),
+                payableOrder.userId(),
+                payableOrder.username(),
+                payableOrder.total(),
+                payableOrder.paymentDeadlineAt()
         );
     }
 
     @Override
-    public com.techora.payment.application.port.order.OrderPaymentConfirmationResult confirmPayment(
-            UUID orderId,
-            String providerName) {
+    public PaymentConfirmationResult confirmPayment(UUID orderId,
+                                                    String providerName) {
 
         return switch (orderPaymentService.confirmPayment(orderId, providerName)) {
-            case CONFIRMED -> com.techora.payment.application.port.order.OrderPaymentConfirmationResult.CONFIRMED;
-            case ALREADY_PAID -> com.techora.payment.application.port.order.OrderPaymentConfirmationResult.ALREADY_PAID;
-            case NOT_PAYABLE -> com.techora.payment.application.port.order.OrderPaymentConfirmationResult.NOT_PAYABLE;
+            case CONFIRMED -> PaymentConfirmationResult.CONFIRMED;
+            case ALREADY_PAID -> PaymentConfirmationResult.ALREADY_PAID;
+            case NOT_PAYABLE -> PaymentConfirmationResult.NOT_PAYABLE;
         };
     }
 }

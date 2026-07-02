@@ -2,12 +2,10 @@ package com.techora.inventory.controller;
 
 import com.techora.common.application.dto.response.ResponseDto;
 import com.techora.common.application.service.ResponseFactory;
-import com.techora.inventory.application.mapper.InventoryItemMapper;
 import com.techora.inventory.application.service.InventoryItemService;
 import com.techora.inventory.application.service.InventoryReservationReconciliationService;
 import com.techora.inventory.controller.constant.InventoryPageConstant;
 import com.techora.inventory.controller.request.ReduceStockRequest;
-import com.techora.inventory.controller.response.InventoryReservationMismatchResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -29,7 +27,6 @@ public class AdminInventoryController {
 
     private final InventoryItemService inventoryItemService;
     private final InventoryReservationReconciliationService inventoryReservationReconciliationService;
-    private final InventoryItemMapper inventoryItemMapper;
     private final ResponseFactory responseFactory;
 
     @GetMapping("/low-stock")
@@ -48,8 +45,7 @@ public class AdminInventoryController {
                 .withSort(InventoryPageConstant.UPDATED_AT_DESCENDING);
 
         return responseFactory.success(
-                inventoryItemMapper.toProductResponsePage(
-                        inventoryItemService.getLowStockProducts(threshold, pageable))
+                inventoryItemService.getLowStockProducts(threshold, pageable)
         );
     }
 
@@ -58,17 +54,14 @@ public class AdminInventoryController {
                                    @Valid @RequestBody ReduceStockRequest request) {
 
         return responseFactory.success(
-                inventoryItemMapper.toProductResponse(
-                        inventoryItemService.reduceStock(productId, request.stock()))
+                inventoryItemService.reduceStock(productId, request.stock())
         );
     }
 
     @GetMapping("/reservation-reconciliation/mismatches")
     public ResponseDto getReservationMismatches() {
         return responseFactory.success(
-                inventoryReservationReconciliationService.findMismatches().stream()
-                        .map(InventoryReservationMismatchResponse::from)
-                        .toList()
+                inventoryReservationReconciliationService.findMismatches()
         );
     }
 }

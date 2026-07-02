@@ -1,9 +1,9 @@
 package com.techora.catalog.mapper;
 
+import com.techora.catalog.application.view.CategoryView;
+import com.techora.catalog.application.view.ProductView;
 import com.techora.catalog.projection.dto.CategoryProjectionSnapshot;
 import com.techora.catalog.projection.dto.ProductProjectionSnapshot;
-import com.techora.catalog.dto.response.CategoryResponse;
-import com.techora.catalog.dto.response.ProductResponse;
 import com.techora.catalog.entity.ProductReadModelEntity;
 import org.springframework.stereotype.Service;
 
@@ -33,8 +33,8 @@ public class ProductReadModelMapper {
                 .build();
     }
 
-    public ProductResponse toResponse(ProductReadModelEntity readModel) {
-        return new ProductResponse(
+    public ProductView toView(ProductReadModelEntity readModel) {
+        return new ProductView(
                 readModel.getProductId(),
                 readModel.getName(),
                 readModel.getSku(),
@@ -42,15 +42,15 @@ public class ProductReadModelMapper {
                 readModel.getDescription(),
                 readModel.getPrice(),
                 readModel.getStockQuantity(),
-                readModel.getStatus(),
-                toCategoryResponse(readModel),
+                readModel.getStatus().name(),
+                toCategoryView(readModel),
                 readModel.getProductCreatedAt(),
                 readModel.getProductUpdatedAt()
         );
     }
 
-    private CategoryResponse toCategoryResponse(ProductReadModelEntity readModel) {
-        return new CategoryResponse(
+    private CategoryView toCategoryView(ProductReadModelEntity readModel) {
+        return new CategoryView(
                 readModel.getCategoryId(),
                 readModel.getCategoryName(),
                 readModel.getCategorySlug(),

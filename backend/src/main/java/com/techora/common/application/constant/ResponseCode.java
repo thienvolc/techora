@@ -17,6 +17,7 @@ public enum ResponseCode {
     CATEGORY_NOT_FOUND("ERR_CATEGORY_NOT_FOUND", "category.not_found", NOT_FOUND),
     PRODUCT_ALREADY_EXISTS("ERR_PRODUCT_ALREADY_EXISTS", "product.already_exists", CONFLICT),
     PRODUCT_NOT_FOUND("ERR_PRODUCT_NOT_FOUND", "product.not_found", NOT_FOUND),
+    INVALID_PRODUCT_STATUS("ERR_INVALID_PRODUCT_STATUS", "product.invalid_status", BAD_REQUEST),
     PRODUCT_UNAVAILABLE("ERR_PRODUCT_UNAVAILABLE", "product.unavailable", CONFLICT),
     INSUFFICIENT_STOCK("ERR_INSUFFICIENT_STOCK", "product.insufficient_stock", CONFLICT),
     CART_ITEM_NOT_FOUND("ERR_CART_ITEM_NOT_FOUND", "cart.item_not_found", NOT_FOUND),
@@ -32,7 +33,8 @@ public enum ResponseCode {
     INVALID_TOKEN("ERR_INVALID_TOKEN", "token.invalid", UNAUTHORIZED),
     ACCESS_DENIED("ERR_ACCESS_DENIED", "access_denied", FORBIDDEN),
     INTERNAL_EXCEPTION("ERR_INTERNAL_EXCEPTION", "internal_server_error", INTERNAL_SERVER_ERROR),
-    SUCCESS("SUCCESS", "request.ok", OK), IDEMPOTENCY_REQUEST_PROCESSING("ERR_IDEMPOTENCY_REQUEST_PROCESSING", "idempotency.request_processing", CONFLICT);
+    SUCCESS("SUCCESS", "request.ok", OK), IDEMPOTENCY_REQUEST_PROCESSING("ERR_IDEMPOTENCY_REQUEST_PROCESSING", "idempotency.request_processing", CONFLICT), PAYMENT_ALREADY_FINALIZED("ERR_INVALID_CREATION_PAYMENT_ATTEMPT", "payment.invalid_creation_attempt", CONFLICT);
+
 
     private final String code;
     private final String defaultMessage;

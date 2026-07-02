@@ -23,18 +23,19 @@ public interface InventoryReservationRepository extends JpaRepository<InventoryR
     List<InventoryReservationEntity> findLockedByOrderId(@Param("orderId") UUID orderId);
 
     @Query(value = """
+            with reserved as (
+                select reservation.product_id, sum(reservation.quantity) as reserved_quantity
+                from inventory_reservations reservation
+                where reservation.status = 'RESERVED'
+                group by reservation.product_id
+            )
             select
                 item.product_id as "productId",
                 item.reserved_quantity as "stockReservedQuantity",
                 coalesce(reserved.reserved_quantity, 0) as "reservationReservedQuantity",
                 item.reserved_quantity - coalesce(reserved.reserved_quantity, 0) as "difference"
             from inventory_items item
-            left join (
-                select reservation.product_id, sum(reservation.quantity) as reserved_quantity
-                from inventory_reservations reservation
-                where reservation.status = 'RESERVED'
-                group by reservation.product_id
-            ) reserved on reserved.product_id = item.product_id
+            left join reserved on reserved.product_id = item.product_id
             where item.reserved_quantity <> coalesce(reserved.reserved_quantity, 0)
 
             union all
@@ -44,12 +45,7 @@ public interface InventoryReservationRepository extends JpaRepository<InventoryR
                 0 as "stockReservedQuantity",
                 reserved.reserved_quantity as "reservationReservedQuantity",
                 0 - reserved.reserved_quantity as "difference"
-            from (
-                select reservation.product_id, sum(reservation.quantity) as reserved_quantity
-                from inventory_reservations reservation
-                where reservation.status = 'RESERVED'
-                group by reservation.product_id
-            ) reserved
+            from reserved
             left join inventory_items item on item.product_id = reserved.product_id
             where item.product_id is null
             """, nativeQuery = true)

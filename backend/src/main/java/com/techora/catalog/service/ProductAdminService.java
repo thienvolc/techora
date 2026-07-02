@@ -1,24 +1,25 @@
 package com.techora.catalog.service;
 
+import com.techora.catalog.application.port.inventory.CatalogInventoryPort;
+import com.techora.catalog.application.port.inventory.CatalogInventoryStock;
+import com.techora.catalog.application.view.ProductView;
 import com.techora.common.application.aop.BusinessException;
 import com.techora.catalog.entity.CategoryEntity;
 import com.techora.catalog.dto.request.CreateProductRequest;
 import com.techora.catalog.dto.request.ProductRequest;
-import com.techora.catalog.dto.response.ProductResponse;
 import com.techora.catalog.projection.event.ProductProjectionChangedEvent;
 import com.techora.catalog.projection.event.ProductProjectionDeletedEvent;
 import com.techora.catalog.entity.ProductEntity;
+import com.techora.catalog.entity.ProductStatus;
 import com.techora.catalog.mapper.ProductMapper;
 import com.techora.catalog.repository.ProductRepository;
 import com.techora.common.application.constant.ResponseCode;
 import com.techora.common.domain.event.InternalEventPublisher;
-import com.techora.inventory.application.result.InventoryStockSnapshot;
-import com.techora.inventory.application.service.InventoryItemService;
-import com.techora.inventory.application.service.InventoryStockQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -27,38 +28,38 @@ public class ProductAdminService {
 
     private final ProductRepository repository;
     private final ProductMapper mapper;
-    private final InventoryItemService inventoryItemService;
-    private final InventoryStockQueryService inventoryStockQueryService;
+    private final CatalogInventoryPort catalogInventoryPort;
     private final InternalEventPublisher internalEventPublisher;
 
     private final CategoryService categoryService;
 
     @Transactional
-    public ProductResponse create(CreateProductRequest request) {
+    public ProductView create(CreateProductRequest request) {
         String slug = SlugGenerator.generate(request.name());
         validateUniqueProductIdentity(request.sku(), slug);
 
         CategoryEntity category = categoryService.getCategoryOrThrow(request.categoryId());
-        ProductEntity product = mapper.toEntity(request, category, slug);
+        ProductStatus status = parseProductStatus(request.status());
+        ProductEntity product = mapper.toEntity(request, category, slug, status);
         ProductEntity savedProduct = repository.save(product);
-        InventoryStockSnapshot stock = inventoryItemService.initializeProductStock(
+        CatalogInventoryStock stock = catalogInventoryPort.initializeProductStock(
                 savedProduct.getId(),
                 request.initialStockQuantity());
         internalEventPublisher.publish(ProductProjectionChangedEvent.of(
                 mapper.toProjectionSnapshot(savedProduct, stock.availableQuantity())));
-        return mapper.toResponse(savedProduct, stock.quantityOnHand());
+        return mapper.toView(savedProduct, stock.quantityOnHand());
     }
 
     @Transactional(readOnly = true)
-    public ProductResponse get(UUID productId) {
+    public ProductView get(UUID productId) {
         ProductEntity product = getProductOrThrow(productId);
-        return mapper.toResponse(
+        return mapper.toView(
                 product,
-                inventoryStockQueryService.getQuantityOnHand(productId));
+                catalogInventoryPort.getQuantityOnHand(productId));
     }
 
     @Transactional
-    public ProductResponse update(UUID productId, ProductRequest request) {
+    public ProductView update(UUID productId, ProductRequest request) {
         String slug = SlugGenerator.generate(request.name());
         validateUniqueProductIdentity(
                 productId,
@@ -68,20 +69,22 @@ public class ProductAdminService {
         ProductEntity product = getProductOrThrow(productId);
         String previousSlug = product.getSlug();
         CategoryEntity category = categoryService.getCategoryOrThrow(request.categoryId());
+        ProductStatus status = parseProductStatus(request.status());
         applyProductChanges(
                 product,
                 request,
                 category,
-                slug);
+                slug,
+                status);
         ProductEntity savedProduct = repository.save(product);
         internalEventPublisher.publish(ProductProjectionChangedEvent.of(
                 mapper.toProjectionSnapshot(
                         savedProduct,
-                        inventoryStockQueryService.getAvailableQuantity(productId)),
+                        catalogInventoryPort.getAvailableQuantity(productId)),
                 previousSlug));
-        return mapper.toResponse(
+        return mapper.toView(
                 savedProduct,
-                inventoryStockQueryService.getQuantityOnHand(productId));
+                catalogInventoryPort.getQuantityOnHand(productId));
     }
 
     @Transactional
@@ -112,17 +115,26 @@ public class ProductAdminService {
     private void applyProductChanges(ProductEntity product,
                                      ProductRequest request,
                                      CategoryEntity category,
-                                     String slug) {
+                                     String slug,
+                                     ProductStatus status) {
 
         product.setName(request.name());
         product.setSku(request.sku());
         product.setDescription(request.description());
         product.setPrice(request.price());
-        product.setStatus(request.status());
+        product.setStatus(status);
 
         product.setCategory(category);
         product.setSlug(slug);
 
         product.markUpdated();
+    }
+
+    private ProductStatus parseProductStatus(String status) {
+        try {
+            return ProductStatus.valueOf(status.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(ResponseCode.INVALID_PRODUCT_STATUS);
+        }
     }
 }

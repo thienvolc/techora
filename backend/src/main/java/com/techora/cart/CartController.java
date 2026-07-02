@@ -21,7 +21,7 @@ public class CartController {
 
     @GetMapping
     public ResponseDto getCart(@AuthenticationPrincipal UserPrincipal principal) {
-        return responseFactory.success(cartService.get(principal.getUserId()));
+        return responseFactory.success(cartService.getCart(principal.getUserId()));
     }
 
     @PostMapping("/items")

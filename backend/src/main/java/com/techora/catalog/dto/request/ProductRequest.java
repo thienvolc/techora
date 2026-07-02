@@ -1,6 +1,5 @@
 package com.techora.catalog.dto.request;
 
-import com.techora.catalog.entity.ProductStatus;
 import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
@@ -12,9 +11,9 @@ public record ProductRequest(
         @Size(max = 2000) String description,
         @NotNull @DecimalMin(value = "0.01") BigDecimal price,
         @NotNull UUID categoryId,
-        ProductStatus status
+        String status
 ) {
-    public ProductStatus status() {
-        return status == null ? ProductStatus.ACTIVE : status;
+    public String status() {
+        return status == null ? "ACTIVE" : status;
     }
 }

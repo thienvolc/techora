@@ -4,6 +4,7 @@ import com.techora.common.application.dto.response.ResponseDto;
 import com.techora.common.application.service.ResponseFactory;
 import com.techora.auth.dto.request.LoginRequest;
 import com.techora.auth.dto.request.RegisterRequest;
+import com.techora.auth.dto.response.AuthResponse;
 import com.techora.user.UserService;
 import com.techora.common.infra.service.UserPrincipal;
 import jakarta.validation.Valid;
@@ -21,12 +22,12 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseDto register(@Valid @RequestBody RegisterRequest request) {
-        return responseFactory.success(authService.register(request));
+        return responseFactory.success(AuthResponse.from(authService.register(request)));
     }
 
     @PostMapping("/login")
     public ResponseDto login(@Valid @RequestBody LoginRequest request) {
-        return responseFactory.success(authService.login(request));
+        return responseFactory.success(AuthResponse.from(authService.login(request)));
     }
 
     @GetMapping("/me")

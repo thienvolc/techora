@@ -3,6 +3,7 @@ package com.techora.payment.domain.entity;
 import com.techora.common.application.aop.BusinessException;
 import com.techora.common.application.constant.ResponseCode;
 import com.techora.payment.domain.valueobject.PaymentAttemptStatus;
+import com.techora.payment.domain.valueobject.PaymentProvider;
 import com.techora.payment.domain.valueobject.ProviderPaymentEvidence;
 import lombok.Builder;
 import lombok.Getter;
@@ -16,7 +17,7 @@ public class PaymentAttempt extends AggregateRoot<UUID> {
     private final UUID paymentId;
     private final UUID orderId;
     private final UUID userId;
-    private final String providerName;
+    private final PaymentProvider providerName;
     private final String providerReference;
     private final BigDecimal amount;
     private final Instant expiresAt;
@@ -26,13 +27,15 @@ public class PaymentAttempt extends AggregateRoot<UUID> {
     private String providerResponseCode;
     private String providerStatusCode;
     private String providerTransactionId;
-    private String rawProviderPayload;
+    private String providerRawPayload;
     private Instant providerResultReceivedAt;
+
     private Instant paidAt;
     private Instant failedAt;
     private Instant expiredAt;
     private Instant reconciliationResolvedAt;
-    private String reconciliationResolutionNote;
+    private String reconciliationNote;
+
     private Instant updatedAt;
 
     @Builder
@@ -40,21 +43,21 @@ public class PaymentAttempt extends AggregateRoot<UUID> {
                            UUID paymentId,
                            UUID orderId,
                            UUID userId,
-                           String providerName,
+                           PaymentProvider providerName,
                            String providerReference,
                            BigDecimal amount,
                            PaymentAttemptStatus status,
                            String providerResponseCode,
                            String providerStatusCode,
                            String providerTransactionId,
-                           String rawProviderPayload,
+                           String providerRawPayload,
                            Instant providerResultReceivedAt,
                            Instant expiresAt,
                            Instant paidAt,
                            Instant failedAt,
                            Instant expiredAt,
                            Instant reconciliationResolvedAt,
-                           String reconciliationResolutionNote,
+                           String reconciliationNote,
                            Instant createdAt,
                            Instant updatedAt) {
 
@@ -69,14 +72,14 @@ public class PaymentAttempt extends AggregateRoot<UUID> {
         this.providerResponseCode = providerResponseCode;
         this.providerStatusCode = providerStatusCode;
         this.providerTransactionId = providerTransactionId;
-        this.rawProviderPayload = rawProviderPayload;
+        this.providerRawPayload = providerRawPayload;
         this.providerResultReceivedAt = providerResultReceivedAt;
         this.expiresAt = expiresAt;
         this.paidAt = paidAt;
         this.failedAt = failedAt;
         this.expiredAt = expiredAt;
         this.reconciliationResolvedAt = reconciliationResolvedAt;
-        this.reconciliationResolutionNote = reconciliationResolutionNote;
+        this.reconciliationNote = reconciliationNote;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -84,7 +87,7 @@ public class PaymentAttempt extends AggregateRoot<UUID> {
     public static PaymentAttempt createPending(UUID paymentId,
                                                UUID orderId,
                                                UUID userId,
-                                               String providerName,
+                                               PaymentProvider providerName,
                                                String providerReference,
                                                BigDecimal amount,
                                                Instant expiresAt,
@@ -104,87 +107,98 @@ public class PaymentAttempt extends AggregateRoot<UUID> {
                 .build();
     }
 
-    public boolean isPending() {
-        return status == PaymentAttemptStatus.PENDING;
-    }
-
-    public boolean isExpired(Instant now) {
-        return status == PaymentAttemptStatus.PENDING && !expiresAt.isAfter(now);
-    }
-
-    public boolean canAutoConfirm(Instant now) {
-        return status == PaymentAttemptStatus.PENDING && expiresAt.isAfter(now);
-    }
-
-    public boolean isProviderSuccessAlreadyHandled() {
-        return status == PaymentAttemptStatus.PAID
-                || status == PaymentAttemptStatus.RECONCILIATION_REQUIRED;
-    }
-
-    public boolean markPaid(ProviderPaymentEvidence evidence, Instant now) {
-        if (status == PaymentAttemptStatus.PAID) {
-            return false;
+    public void markPaid(ProviderPaymentEvidence evidence) {
+        if (isPaid()) {
+            return;
         }
+        updateStatus(PaymentAttemptStatus.PAID, evidence.receivedAt());
         recordProviderEvidence(evidence);
-        changeStatus(PaymentAttemptStatus.PAID, now);
-        paidAt = now;
-        return true;
+        paidAt = evidence.receivedAt();
     }
 
-    public boolean markFailed(ProviderPaymentEvidence evidence, Instant now) {
-        if (status == PaymentAttemptStatus.FAILED) {
-            return false;
+    public void markFailed(ProviderPaymentEvidence evidence) {
+        if (isFailed()) {
+            return;
         }
+        updateStatus(PaymentAttemptStatus.FAILED, evidence.receivedAt());
         recordProviderEvidence(evidence);
-        changeStatus(PaymentAttemptStatus.FAILED, now);
-        failedAt = now;
-        return true;
+        failedAt = evidence.receivedAt();
     }
 
-    public boolean markExpired(Instant now) {
-        if (status == PaymentAttemptStatus.EXPIRED) {
-            return false;
+    public void markExpired(Instant now) {
+        if (!isExpired(now)) {
+            return;
         }
-        changeStatus(PaymentAttemptStatus.EXPIRED, now);
+        updateStatus(PaymentAttemptStatus.EXPIRED, now);
         expiredAt = now;
-        return true;
     }
 
-    public boolean markReconciliationRequired(ProviderPaymentEvidence evidence, Instant now) {
-        if (status == PaymentAttemptStatus.RECONCILIATION_REQUIRED) {
-            return false;
+    public void markReconciliationRequired(ProviderPaymentEvidence evidence) {
+        if (isReconciliationRequired()) {
+            return;
         }
+        updateStatus(PaymentAttemptStatus.RECONCILIATION_REQUIRED, evidence.receivedAt());
         recordProviderEvidence(evidence);
-        changeStatus(PaymentAttemptStatus.RECONCILIATION_REQUIRED, now);
-        return true;
     }
 
     public void resolveReconciliation(String note, Instant now) {
-        if (status != PaymentAttemptStatus.RECONCILIATION_REQUIRED) {
+        if (!isReconciliationRequired()) {
             throw new BusinessException(ResponseCode.INVALID_PAYMENT_STATUS_TRANSITION);
         }
         reconciliationResolvedAt = now;
-        reconciliationResolutionNote = note;
+        reconciliationNote = note;
         updatedAt = now;
     }
 
-    public boolean isReconciliationResolved() {
-        return reconciliationResolvedAt != null;
+    private void updateStatus(PaymentAttemptStatus nextStatus, Instant now) {
+        if (!status.canTransitionTo(nextStatus)) {
+            throw new BusinessException(ResponseCode.INVALID_PAYMENT_STATUS_TRANSITION);
+        }
+        status = nextStatus;
+        updatedAt = now;
     }
 
     private void recordProviderEvidence(ProviderPaymentEvidence evidence) {
         providerResponseCode = evidence.responseCode();
         providerStatusCode = evidence.providerStatusCode();
         providerTransactionId = evidence.providerTransactionId();
-        rawProviderPayload = evidence.rawPayload();
+        providerRawPayload = evidence.rawPayload();
         providerResultReceivedAt = evidence.receivedAt();
     }
 
-    private void changeStatus(PaymentAttemptStatus nextStatus, Instant now) {
-        if (!status.canTransitionTo(nextStatus)) {
-            throw new BusinessException(ResponseCode.INVALID_PAYMENT_STATUS_TRANSITION);
-        }
-        status = nextStatus;
-        updatedAt = now;
+    public boolean isExpired(Instant now) {
+        return isPending() && isPastDue(now);
+    }
+
+    public boolean canAutoConfirm(Instant now) {
+        return isPending() && !isPastDue(now);
+    }
+
+    public boolean hasHandledProviderResult() {
+        return providerResultReceivedAt != null;
+    }
+
+    public boolean canApplyProviderFailure() {
+        return isPending();
+    }
+
+    public boolean isPending() {
+        return status == PaymentAttemptStatus.PENDING;
+    }
+
+    public boolean isPastDue(Instant now) {
+        return !expiresAt.isAfter(now);
+    }
+
+    public boolean isPaid() {
+        return status == PaymentAttemptStatus.PAID;
+    }
+
+    private boolean isFailed() {
+        return status == PaymentAttemptStatus.FAILED;
+    }
+
+    public boolean isReconciliationRequired() {
+        return status == PaymentAttemptStatus.RECONCILIATION_REQUIRED;
     }
 }

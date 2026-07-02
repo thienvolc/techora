@@ -1,7 +1,13 @@
 package com.techora.inventory.domain.entity;
 
+import com.techora.common.application.aop.BusinessException;
+import com.techora.common.application.constant.ResponseCode;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -12,8 +18,8 @@ import java.util.UUID;
 })
 @Getter
 @Builder
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
+@NoArgsConstructor
+@AllArgsConstructor
 public class InventoryItemEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -28,79 +34,51 @@ public class InventoryItemEntity {
     @Column(nullable = false)
     private int reservedQuantity;
 
+    @UpdateTimestamp
     @Column(nullable = false)
     private Instant createdAt;
 
+    @UpdateTimestamp
     @Column(nullable = false)
     private Instant updatedAt;
-
-    public void reduce(int quantity) {
-        validatePositiveQuantity(quantity);
-        if (availableQuantity() < quantity) {
-            throw new IllegalArgumentException("Insufficient available quantity");
-        }
-        this.quantityOnHand -= quantity;
-        markUpdated();
-    }
-
-    public void changeQuantityOnHand(int quantityOnHand) {
-        if (quantityOnHand < 0) {
-            throw new IllegalArgumentException("Quantity on hand cannot be negative");
-        }
-        if (quantityOnHand < reservedQuantity) {
-            throw new IllegalArgumentException("Quantity on hand cannot be less than reserved quantity");
-        }
-        this.quantityOnHand = quantityOnHand;
-        markUpdated();
-    }
 
     public int availableQuantity() {
         return quantityOnHand - reservedQuantity;
     }
 
-    public void reserve(int quantity) {
-        validatePositiveQuantity(quantity);
+    public void reduce(int quantity) {
         if (availableQuantity() < quantity) {
-            throw new IllegalArgumentException("Insufficient available quantity");
+            throw new BusinessException(ResponseCode.INSUFFICIENT_STOCK);
+        }
+        this.quantityOnHand -= quantity;
+    }
+
+    public void reserve(int quantity) {
+        if (availableQuantity() < quantity) {
+            throw new BusinessException(ResponseCode.INSUFFICIENT_STOCK);
         }
         this.reservedQuantity += quantity;
-        markUpdated();
+    }
+
+    public void updateQuantityOnHand(int quantityOnHand) {
+        if (quantityOnHand < reservedQuantity) {
+            throw new BusinessException(ResponseCode.INSUFFICIENT_STOCK);
+        }
+        this.quantityOnHand = quantityOnHand;
     }
 
     public void confirmReserved(int quantity) {
-        validatePositiveQuantity(quantity);
         if (reservedQuantity < quantity) {
-            throw new IllegalArgumentException("Insufficient reserved quantity");
+            throw new BusinessException(ResponseCode.INSUFFICIENT_STOCK);
         }
         this.reservedQuantity -= quantity;
         this.quantityOnHand -= quantity;
-        markUpdated();
     }
 
     public void releaseReserved(int quantity) {
-        validatePositiveQuantity(quantity);
         if (reservedQuantity < quantity) {
-            throw new IllegalArgumentException("Insufficient reserved quantity");
+            throw new BusinessException(ResponseCode.INSUFFICIENT_STOCK);
         }
         this.reservedQuantity -= quantity;
-        markUpdated();
-    }
-
-    private void markUpdated() {
-        updatedAt = Instant.now();
-    }
-
-    private void validatePositiveQuantity(int quantity) {
-        if (quantity <= 0) {
-            throw new IllegalArgumentException("Quantity must be positive");
-        }
-    }
-
-    @PrePersist
-    @PreUpdate
-    private void validateStockState() {
-        if (quantityOnHand < 0 || reservedQuantity < 0 || reservedQuantity > quantityOnHand) {
-            throw new IllegalStateException("Invalid inventory stock state");
-        }
     }
 }

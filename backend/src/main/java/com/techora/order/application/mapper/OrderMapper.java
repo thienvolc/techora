@@ -1,37 +1,19 @@
 package com.techora.order.application.mapper;
 
 import com.techora.common.application.dto.response.PageResponse;
-import com.techora.order.application.command.PlaceOrderCommand;
-import com.techora.order.application.command.PlaceOrderItemCommand;
-import com.techora.order.application.result.OrderItemResult;
-import com.techora.order.application.result.OrderResult;
+import com.techora.order.application.model.OrderItemView;
+import com.techora.order.application.model.OrderView;
 import com.techora.order.domain.entity.Order;
 import com.techora.order.domain.entity.OrderItem;
-import com.techora.order.domain.entity.OrderStatus;
 import org.springframework.data.domain.Page;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
-import java.time.Instant;
-
-@Service
+@Component
 public class OrderMapper {
 
-    public OrderResult toResult(Order order) {
-        return new OrderResult(
-                order.getId(),
-                order.getUserId(),
-                order.getStatus(),
-                order.getTotal(),
-                order.getItems().stream().map(this::toItemResult).toList(),
-                order.getPaymentDeadlineAt(),
-                order.getCreatedAt(),
-                order.getUpdatedAt()
-        );
-    }
-
-    public PageResponse<OrderResult> toPageResult(Page<Order> page) {
+    public PageResponse<OrderView> toPageView(Page<Order> page) {
         return new PageResponse<>(
-                page.getContent().stream().map(this::toResult).toList(),
+                page.getContent().stream().map(this::toView).toList(),
                 page.getNumber(),
                 page.getSize(),
                 page.getTotalElements(),
@@ -39,8 +21,21 @@ public class OrderMapper {
         );
     }
 
-    private OrderItemResult toItemResult(OrderItem item) {
-        return new OrderItemResult(
+    public OrderView toView(Order order) {
+        return new OrderView(
+                order.getId(),
+                order.getUserId(),
+                order.getStatus().name(),
+                order.getTotal(),
+                order.getItems().stream().map(this::toItemView).toList(),
+                order.getPaymentDeadlineAt(),
+                order.getCreatedAt(),
+                order.getUpdatedAt()
+        );
+    }
+
+    private OrderItemView toItemView(OrderItem item) {
+        return new OrderItemView(
                 item.getId(),
                 item.getProductId(),
                 item.getProductName(),
@@ -49,31 +44,5 @@ public class OrderMapper {
                 item.getQuantity(),
                 item.getSubtotal()
         );
-    }
-
-    public Order toOrder(PlaceOrderCommand command, Instant createdAt, Instant paymentDeadlineAt) {
-        return Order.builder()
-                .userId(command.userId())
-                .username(command.username())
-                .status(OrderStatus.CREATED)
-                .total(command.total())
-                .paymentDeadlineAt(paymentDeadlineAt)
-                .items(command.items().stream()
-                        .map(this::toOrderItem)
-                        .toList())
-                .createdAt(createdAt)
-                .updatedAt(createdAt)
-                .build();
-    }
-
-    private OrderItem toOrderItem(PlaceOrderItemCommand item) {
-        return OrderItem.builder()
-                .productId(item.productId())
-                .productName(item.productName())
-                .sku(item.sku())
-                .unitPrice(item.unitPrice())
-                .quantity(item.quantity())
-                .subtotal(item.subtotal())
-                .build();
     }
 }

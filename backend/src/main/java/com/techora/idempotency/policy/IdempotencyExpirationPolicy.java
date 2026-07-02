@@ -17,7 +17,7 @@ public class IdempotencyExpirationPolicy {
         Instant now = Instant.now(clock);
 
         return switch (operation) {
-            case CHECKOUT -> now.plus(30, ChronoUnit.MINUTES);
+            case PLACE_ORDER -> now.plus(30, ChronoUnit.MINUTES);
             case INITIATE_VNPAY_PAYMENT -> now.plus(1, ChronoUnit.DAYS);
         };
     }

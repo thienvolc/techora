@@ -1,9 +1,9 @@
 package com.techora.catalog.service;
 
+import com.techora.catalog.application.port.inventory.CatalogInventoryPort;
 import com.techora.catalog.entity.ProductEntity;
 import com.techora.catalog.mapper.ProductMapper;
 import com.techora.catalog.repository.ProductRepository;
-import com.techora.inventory.application.service.InventoryStockQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -20,7 +20,7 @@ import java.util.UUID;
 public class ProductReadModelBootstrapService implements ApplicationRunner {
 
     private final ProductRepository productRepository;
-    private final InventoryStockQueryService inventoryStockQueryService;
+    private final CatalogInventoryPort catalogInventoryPort;
     private final ProductReadModelService productReadModelService;
     private final ProductMapper productMapper;
 
@@ -28,7 +28,7 @@ public class ProductReadModelBootstrapService implements ApplicationRunner {
     @Transactional
     public void run(ApplicationArguments args) {
         var products = productRepository.findAllBy();
-        Map<UUID, Integer> stockByProductId = inventoryStockQueryService.getAvailableQuantities(
+        Map<UUID, Integer> stockByProductId = catalogInventoryPort.getAvailableQuantities(
                 products.stream()
                         .map(ProductEntity::getId)
                         .toList());

@@ -1,8 +1,8 @@
 package com.techora.catalog.service;
 
+import com.techora.catalog.application.view.ProductView;
 import com.techora.common.application.dto.response.PageResponse;
 import com.techora.catalog.dto.request.ProductFilter;
-import com.techora.catalog.dto.response.ProductResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -15,12 +15,12 @@ public class ProductPublicService {
     private final ProductReadModelService productReadModelService;
 
     @Transactional(readOnly = true)
-    public PageResponse<ProductResponse> search(ProductFilter filter, Pageable pageable) {
+    public PageResponse<ProductView> search(ProductFilter filter, Pageable pageable) {
         return productReadModelService.searchPublicProducts(filter, pageable);
     }
 
     @Transactional(readOnly = true)
-    public ProductResponse getBySlug(String slug) {
+    public ProductView getBySlug(String slug) {
         return productReadModelService.getPublicProductBySlug(slug);
     }
 }

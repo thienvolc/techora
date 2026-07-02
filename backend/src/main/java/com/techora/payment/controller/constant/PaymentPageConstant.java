@@ -1,5 +1,7 @@
 package com.techora.payment.controller.constant;
 
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import org.springframework.data.domain.Sort;
 
 public class PaymentPageConstant {

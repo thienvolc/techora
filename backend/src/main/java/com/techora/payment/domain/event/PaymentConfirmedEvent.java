@@ -1,49 +1,42 @@
 package com.techora.payment.domain.event;
 
 import com.techora.common.domain.event.InternalEvent;
-import com.techora.payment.domain.entity.Payment;
-import com.techora.payment.domain.valueobject.PaymentStatus;
+import com.techora.payment.domain.entity.PaymentAttempt;
+import com.techora.payment.domain.valueobject.PaymentProvider;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
 public record PaymentConfirmedEvent(
+        int eventVersion,
         UUID paymentId,
+        UUID attemptId,
         UUID orderId,
         UUID userId,
         BigDecimal amount,
-        PaymentStatus status,
-        String providerName,
+        PaymentProvider providerName,
+        String providerReference,
         Instant occurredAt
 ) implements InternalEvent {
+    private static final int CURRENT_VERSION = 1;
 
     @Override
     public UUID aggregateId() {
         return paymentId;
     }
 
-    public PaymentConfirmedEvent(Payment payment) {
+    public PaymentConfirmedEvent(PaymentAttempt attempt) {
         this(
-                payment.getId(),
-                payment.getOrderId(),
-                payment.getUserId(),
-                payment.getAmount(),
-                payment.getStatus(),
-                null,
-                payment.getUpdatedAt()
-        );
-    }
-
-    public PaymentConfirmedEvent(Payment payment, String providerName) {
-        this(
-                payment.getId(),
-                payment.getOrderId(),
-                payment.getUserId(),
-                payment.getAmount(),
-                payment.getStatus(),
-                providerName,
-                payment.getUpdatedAt()
+                CURRENT_VERSION,
+                attempt.getPaymentId(),
+                attempt.getId(),
+                attempt.getOrderId(),
+                attempt.getUserId(),
+                attempt.getAmount(),
+                attempt.getProviderName(),
+                attempt.getProviderReference(),
+                attempt.getUpdatedAt()
         );
     }
 }

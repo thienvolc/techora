@@ -41,7 +41,9 @@ public class InventoryReservationService {
     }
 
     private void reserveAllItems(ReserveInventoryCommand command) {
-        // Lock inventory rows in deterministic product order to reduce cross-order deadlocks.
+        // INFO: Lock inventory rows
+        // in deterministic product order
+        // to reduce cross-order deadlocks.
         command.items().stream()
                 .sorted(Comparator.comparing(ReserveInventoryItem::productId))
                 .forEach(item -> reserveItem(item, command));
@@ -58,7 +60,7 @@ public class InventoryReservationService {
     }
 
     private void reserveProductAvailableQuantity(ReserveInventoryItem item) {
-        inventoryItemService.reserve(item.productId(), item.quantity());
+        inventoryItemService.reserveStock(item.productId(), item.quantity());
     }
 
 
@@ -80,7 +82,7 @@ public class InventoryReservationService {
     }
 
     private InventoryStockSnapshot confirmProductReservedQuantity(InventoryReservationEntity reservation) {
-        return inventoryItemService.confirmReserved(reservation.getProductId(), reservation.getQuantity());
+        return inventoryItemService.confirmReservedStock(reservation.getProductId(), reservation.getQuantity());
     }
 
     private void publishStockReducedEvent(InventoryStockSnapshot stock, int quantity) {

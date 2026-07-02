@@ -9,6 +9,6 @@ public record PreparedOrderForPayment(
         UUID userId,
         String username,
         BigDecimal total,
-        Instant paymentWindowExpiresAt
+        Instant paymentDeadlineAt
 ) {
 }

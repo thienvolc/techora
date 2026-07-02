@@ -4,6 +4,7 @@ import com.techora.payment.application.port.persistence.PaymentAttemptRepository
 import com.techora.payment.domain.entity.PaymentAttempt;
 import com.techora.payment.domain.exception.PaymentAlreadyExistsException;
 import com.techora.payment.domain.valueobject.PaymentAttemptStatus;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -41,12 +42,13 @@ public class PaymentAttemptRepositoryImpl implements PaymentAttemptRepository {
     @Override
     public Optional<PaymentAttempt> findLatestByPaymentId(UUID paymentId) {
         return jpaRepository.findFirstByPaymentIdOrderByCreatedAtDesc(paymentId)
-                .map(PaymentAttemptJpaEntity::toDomain);
+        .map(PaymentAttemptJpaEntity::toDomain);
     }
 
     @Override
-    public Optional<PaymentAttempt> findReusablePendingByPaymentId(UUID paymentId, Instant now) {
-        return jpaRepository.findFirstByPaymentIdAndStatusAndExpiresAtAfterOrderByCreatedAtDesc(
+    @Transactional
+    public Optional<PaymentAttempt> findLockedReusablePendingByPaymentId(UUID paymentId, Instant now) {
+    return jpaRepository.findLockedFirstByPaymentIdAndStatusAndExpiresAtAfterOrderByCreatedAtDesc(
                         paymentId,
                         PaymentAttemptStatus.PENDING,
                         now
@@ -61,8 +63,8 @@ public class PaymentAttemptRepositoryImpl implements PaymentAttemptRepository {
     }
 
     @Override
-    public Optional<PaymentAttempt> findLockedByProviderReference(String providerReference) {
-        return jpaRepository.findLockedByProviderReference(providerReference)
+    public Optional<PaymentAttempt> findLockedById(UUID attemptId) {
+        return jpaRepository.findLockedById(attemptId)
                 .map(PaymentAttemptJpaEntity::toDomain);
     }
 

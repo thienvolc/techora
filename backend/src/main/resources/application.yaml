@@ -71,6 +71,7 @@ app:
   events:
     mode: local
     topic: techora.events
+    payment-topic: techora.payment.events
     fallback-on-kafka-error: true
   message-policy:
     min-length: 1
@@ -80,6 +81,10 @@ app:
     duplicate-cooldown-seconds: 5
   outbox:
     worker-delay-ms: 2000
+    relay:
+      delay-ms: 2000
+      batch-size: 100
+      event-types: PAYMENT_CONFIRMED,PAYMENT_FAILED,PAYMENT_RECONCILIATION_REQUIRED
     retry:
       max-retries: 5
       max-backoff-seconds: 60

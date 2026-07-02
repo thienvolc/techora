@@ -1,12 +1,13 @@
 package com.techora.cart.mapper;
 
-import com.techora.cart.dto.response.CartItemResponse;
-import com.techora.cart.dto.response.CartResponse;
-import com.techora.cart.dto.checkout.CartCheckoutItem;
-import com.techora.cart.dto.checkout.CartCheckoutSnapshot;
+import com.techora.cart.dto.response.CartItemView;
+import com.techora.cart.dto.response.CartView;
+import com.techora.cart.dto.order.CartItemSnapshot;
+import com.techora.cart.dto.order.CartSnapshot;
+import com.techora.catalog.dto.CatalogCategorySnapshot;
+import com.techora.catalog.dto.CatalogProductSnapshot;
 import com.techora.cart.entity.CartEntity;
 import com.techora.cart.entity.CartItemEntity;
-import com.techora.catalog.dto.ProductSnapshot;
 import com.techora.catalog.entity.ProductEntity;
 import com.techora.user.dto.UserSnapshot;
 import com.techora.user.entity.UserEntity;
@@ -24,54 +25,52 @@ public class CartMapper {
 
     private final EntityManager entityManager;
 
-    public CartResponse toResponse(CartEntity cart) {
-        List<CartItemResponse> items =
+    public CartView toSnapshot(CartEntity cart) {
+        List<CartItemView> items =
                 cart.getItems().stream()
-                        .map(this::toItemResponse)
+                        .map(this::toItemSnapshot)
                         .toList();
 
         BigDecimal total = items.stream()
-                .map(CartItemResponse::subtotal)
+                .map(CartItemView::subtotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        return CartResponse.builder()
-                .id(cart.getId())
-                .userId(cart.getUser().getId())
-                .items(items)
-                .total(total)
-                .updatedAt(cart.getUpdatedAt())
-                .build();
+        return new CartView(
+                cart.getId(),
+                cart.getUser().getId(),
+                items,
+                total,
+                cart.getUpdatedAt());
     }
 
-    public CartCheckoutSnapshot toCheckoutSnapshot(CartEntity cart) {
-        return new CartCheckoutSnapshot(
+    public CartSnapshot toCartSnapshot(CartEntity cart) {
+        return new CartSnapshot(
                 cart.getUser().getId(),
                 cart.getUser().getUsername(),
                 cart.getItems().stream()
-                        .map(this::toCheckoutItem)
+                        .map(this::toCartItem)
                         .toList()
         );
     }
 
-    private CartItemResponse toItemResponse(CartItemEntity item) {
+    private CartItemView toItemSnapshot(CartItemEntity item) {
         ProductEntity product = item.getProduct();
 
-        return CartItemResponse.builder()
-                .id(item.getId())
-                .productId(product.getId())
-                .productName(product.getName())
-                .sku(product.getSku())
-                .slug(product.getSlug())
-                .unitPrice(product.getPrice())
-                .quantity(item.getQuantity())
-                .subtotal(item.subtotal())
-                .build();
+        return new CartItemView(
+                item.getId(),
+                product.getId(),
+                product.getName(),
+                product.getSku(),
+                product.getSlug(),
+                product.getPrice(),
+                item.getQuantity(),
+                item.subtotal());
     }
 
-    private CartCheckoutItem toCheckoutItem(CartItemEntity item) {
+    private CartItemSnapshot toCartItem(CartItemEntity item) {
         ProductEntity product = item.getProduct();
 
-        return new CartCheckoutItem(
+        return new CartItemSnapshot(
                 product.getId(),
                 product.getName(),
                 product.getSku(),
@@ -80,17 +79,28 @@ public class CartMapper {
         );
     }
 
-    public ProductSnapshot toProductSnapshot(CartItemEntity item) {
+    public CatalogProductSnapshot toCatalogProductSnapshot(CartItemEntity item) {
         ProductEntity product = item.getProduct();
 
-        return new ProductSnapshot(
+        return new CatalogProductSnapshot(
                 product.getId(),
                 product.getName(),
                 product.getSku(),
                 product.getSlug(),
+                product.getDescription(),
                 product.getPrice(),
-                product.getStatus(),
-                product.getCategory().isActive()
+                product.getStatus().name(),
+                new CatalogCategorySnapshot(
+                        product.getCategory().getId(),
+                        product.getCategory().getName(),
+                        product.getCategory().getSlug(),
+                        product.getCategory().getDescription(),
+                        product.getCategory().isActive(),
+                        product.getCategory().getCreatedAt(),
+                        product.getCategory().getUpdatedAt()
+                ),
+                product.getCreatedAt(),
+                product.getUpdatedAt()
         );
     }
 
@@ -104,7 +114,7 @@ public class CartMapper {
     }
 
     public CartItemEntity toItemEntity(CartEntity cart,
-                                       ProductSnapshot product,
+                                       CatalogProductSnapshot product,
                                        int quantity) {
 
         Instant now = Instant.now();

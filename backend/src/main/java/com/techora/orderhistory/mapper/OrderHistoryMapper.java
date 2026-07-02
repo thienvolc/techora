@@ -1,8 +1,8 @@
 package com.techora.orderhistory.mapper;
 
+import com.techora.orderhistory.application.view.AdminOrderHistoryView;
+import com.techora.orderhistory.application.view.OrderHistoryView;
 import com.techora.orderhistory.dto.OrderHistoryRecord;
-import com.techora.orderhistory.dto.response.AdminOrderHistoryResponse;
-import com.techora.orderhistory.dto.response.OrderHistoryResponse;
 import com.techora.orderhistory.entity.OrderHistoryEntity;
 import org.springframework.stereotype.Component;
 
@@ -27,31 +27,35 @@ public class OrderHistoryMapper {
                 .build();
     }
 
-    public OrderHistoryResponse toResponse(OrderHistoryEntity orderHistory) {
-        return new OrderHistoryResponse(
+    public OrderHistoryView toView(OrderHistoryEntity orderHistory) {
+        return new OrderHistoryView(
                 orderHistory.getId(),
                 orderHistory.getOrderId(),
-                orderHistory.getEventType(),
-                orderHistory.getOldStatus(),
-                orderHistory.getNewStatus(),
+                enumName(orderHistory.getEventType()),
+                enumName(orderHistory.getOldStatus()),
+                enumName(orderHistory.getNewStatus()),
                 orderHistory.getReason(),
                 orderHistory.getCreatedAt()
         );
     }
 
-    public AdminOrderHistoryResponse toAdminResponse(OrderHistoryEntity orderHistory) {
-        return new AdminOrderHistoryResponse(
+    public AdminOrderHistoryView toAdminView(OrderHistoryEntity orderHistory) {
+        return new AdminOrderHistoryView(
                 orderHistory.getId(),
                 orderHistory.getOrderId(),
-                orderHistory.getEventType(),
-                orderHistory.getOldStatus(),
-                orderHistory.getNewStatus(),
+                enumName(orderHistory.getEventType()),
+                enumName(orderHistory.getOldStatus()),
+                enumName(orderHistory.getNewStatus()),
                 orderHistory.getReason(),
                 orderHistory.getMetadata(),
-                orderHistory.getActorType(),
+                enumName(orderHistory.getActorType()),
                 orderHistory.getActorId(),
                 orderHistory.getActorName(),
                 orderHistory.getCreatedAt()
         );
+    }
+
+    private String enumName(Enum<?> value) {
+        return value == null ? null : value.name();
     }
 }

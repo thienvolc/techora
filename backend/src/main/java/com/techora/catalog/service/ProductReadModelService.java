@@ -1,8 +1,8 @@
 package com.techora.catalog.service;
 
+import com.techora.catalog.application.view.ProductView;
 import com.techora.catalog.dto.request.ProductFilter;
 import com.techora.catalog.projection.dto.ProductProjectionSnapshot;
-import com.techora.catalog.dto.response.ProductResponse;
 import com.techora.catalog.entity.ProductReadModelEntity;
 import com.techora.catalog.entity.ProductStatus;
 import com.techora.catalog.mapper.ProductReadModelMapper;
@@ -35,7 +35,7 @@ public class ProductReadModelService {
             key = "T(com.techora.catalog.projection.cache.ProductListingCacheKey).of(#filter, #pageable)",
             condition = "T(com.techora.catalog.projection.cache.ProductListingCachePolicy).isCacheable(#filter, #pageable)"
     )
-    public PageResponse<ProductResponse> searchPublicProducts(ProductFilter filter, Pageable pageable) {
+    public PageResponse<ProductView> searchPublicProducts(ProductFilter filter, Pageable pageable) {
         Page<ProductReadModelEntity> products = repository.searchPublicProducts(
                 ProductStatus.ACTIVE,
                 filter.getCategoryId(),
@@ -44,7 +44,7 @@ public class ProductReadModelService {
 
         return new PageResponse<>(
                 products.getContent().stream()
-                        .map(mapper::toResponse)
+                        .map(mapper::toView)
                         .toList(),
                 products.getNumber(),
                 products.getSize(),
@@ -55,9 +55,9 @@ public class ProductReadModelService {
 
     @Transactional(readOnly = true)
     @Cacheable(cacheNames = CacheNames.PRODUCT_DETAIL_BY_SLUG, key = "#slug")
-    public ProductResponse getPublicProductBySlug(String slug) {
+    public ProductView getPublicProductBySlug(String slug) {
         return repository.findBySlugAndStatusAndCategoryActiveTrue(slug, ProductStatus.ACTIVE)
-                .map(mapper::toResponse)
+                .map(mapper::toView)
                 .orElseThrow(() -> new BusinessException(ResponseCode.PRODUCT_NOT_FOUND));
     }
 

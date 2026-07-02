@@ -17,11 +17,11 @@ public interface PaymentAttemptRepository {
 
     Optional<PaymentAttempt> findLatestByPaymentId(UUID paymentId);
 
-    Optional<PaymentAttempt> findReusablePendingByPaymentId(UUID paymentId, Instant now);
+    Optional<PaymentAttempt> findLockedReusablePendingByPaymentId(UUID paymentId, Instant now);
 
     Optional<PaymentAttempt> findByProviderReference(String providerReference);
 
-    Optional<PaymentAttempt> findLockedByProviderReference(String providerReference);
+    Optional<PaymentAttempt> findLockedById(UUID attemptId);
 
     List<PaymentAttempt> findExpiredPendingForUpdate(Instant now, int limit);
 

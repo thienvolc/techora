@@ -1,16 +1,16 @@
 package com.techora.cart;
 
+import com.techora.cart.dto.response.CartView;
 import com.techora.common.application.aop.BusinessException;
-import com.techora.cart.dto.checkout.CartCheckoutSnapshot;
+import com.techora.cart.dto.order.CartSnapshot;
 import com.techora.cart.dto.request.AddCartItemRequest;
 import com.techora.cart.dto.request.UpdateCartItemRequest;
-import com.techora.cart.dto.response.CartResponse;
 import com.techora.cart.entity.CartEntity;
 import com.techora.cart.entity.CartItemEntity;
 import com.techora.cart.mapper.CartMapper;
 import com.techora.cart.repository.CartItemRepository;
 import com.techora.cart.repository.CartRepository;
-import com.techora.catalog.dto.ProductSnapshot;
+import com.techora.catalog.dto.CatalogProductSnapshot;
 import com.techora.catalog.service.ProductAvailabilityService;
 import com.techora.catalog.service.ProductPurchasePolicy;
 import com.techora.common.application.constant.ResponseCode;
@@ -39,15 +39,15 @@ public class CartService {
     private final InventoryStockQueryService inventoryStockQueryService;
 
     @Transactional
-    public CartResponse get(UUID userId) {
-        return mapper.toResponse(
+    public CartView getCart(UUID userId) {
+        return mapper.toSnapshot(
                 getOrCreateCart(userId));
     }
 
     @Transactional
-    public CartResponse addItem(UUID userId, AddCartItemRequest request) {
+    public CartView addItem(UUID userId, AddCartItemRequest request) {
         CartEntity cart = getOrCreateCart(userId);
-        ProductSnapshot product =
+        CatalogProductSnapshot product =
                 productAvailabilityService
                         .getLockedActiveProductOrThrow(
                                 request.productId());
@@ -60,18 +60,18 @@ public class CartService {
                 product);
 
         cart.markUpdated();
-        return mapper.toResponse(
+        return mapper.toSnapshot(
                 repository.save(cart));
     }
 
     @Transactional
-    public CartResponse updateItem(UUID userId,
-                                   UUID itemId,
-                                   UpdateCartItemRequest request) {
+    public CartView updateItem(UUID userId,
+                               UUID itemId,
+                               UpdateCartItemRequest request) {
 
         CartItemEntity item = getItemOrThrow(userId, itemId);
 
-        ProductSnapshot product = mapper.toProductSnapshot(item);
+        CatalogProductSnapshot product = mapper.toCatalogProductSnapshot(item);
         validateProductAvailable(product);
 
         applyItemQuantityChanges(
@@ -81,43 +81,38 @@ public class CartService {
 
         var cart = item.getCart();
         cart.markUpdated();
-        return mapper.toResponse(
+        return mapper.toSnapshot(
                 repository.save(cart));
     }
 
     @Transactional
-    public CartResponse removeItem(UUID userId, UUID itemId) {
+    public CartView removeItem(UUID userId, UUID itemId) {
         CartItemEntity item = getItemOrThrow(userId, itemId);
         CartEntity cart = item.getCart();
 
         cart.getItems().remove(item);
 
         cart.markUpdated();
-        return mapper.toResponse(
+        return mapper.toSnapshot(
                 repository.save(cart));
     }
 
     @Transactional
-    public CartResponse clearCart(UUID userId) {
+    public CartView clearCart(UUID userId) {
         CartEntity cart = getOrCreateCart(userId);
 
         cart.getItems().clear();
 
         cart.markUpdated();
-        return mapper.toResponse(
+        return mapper.toSnapshot(
                 repository.save(cart));
     }
 
     @Transactional(readOnly = true)
-    public CartEntity getCartOrThrow(UUID userId) {
-        return getOrCreateCart(userId);
-    }
-
-    @Transactional(readOnly = true)
-    public CartCheckoutSnapshot getCheckoutSnapshot(UUID userId) {
+    public CartSnapshot getPlaceOrderCartSnapshot(UUID userId) {
         CartEntity cart = getOrCreateCart(userId);
-        cart.getItems().forEach(this::validateCheckoutItem);
-        return mapper.toCheckoutSnapshot(cart);
+        cart.getItems().forEach(this::validatePlaceOrderItem);
+        return mapper.toCartSnapshot(cart);
     }
 
     private CartEntity getOrCreateCart(UUID userId) {
@@ -132,7 +127,7 @@ public class CartService {
                 mapper.toEntity(user));
     }
 
-    private CartItemEntity getOrCreateItem(CartEntity cart, ProductSnapshot product) {
+    private CartItemEntity getOrCreateItem(CartEntity cart, CatalogProductSnapshot product) {
         return itemRepository
                 .findByCartIdAndProductId(
                         cart.getId(), product.id())
@@ -140,7 +135,7 @@ public class CartService {
                         createItem(cart, product));
     }
 
-    private CartItemEntity createItem(CartEntity cart, ProductSnapshot product) {
+    private CartItemEntity createItem(CartEntity cart, CatalogProductSnapshot product) {
         CartItemEntity item =
                 mapper.toItemEntity(
                         cart,
@@ -159,7 +154,7 @@ public class CartService {
 
     private void applyItemQuantityChanges(CartItemEntity item,
                                           int requestedQuantity,
-                                          ProductSnapshot product) {
+                                          CatalogProductSnapshot product) {
 
         validateAvailableQuantity(product, requestedQuantity);
 
@@ -167,16 +162,16 @@ public class CartService {
         item.markUpdated();
     }
 
-    private void validateAvailableQuantity(ProductSnapshot product, int requestedQuantity) {
+    private void validateAvailableQuantity(CatalogProductSnapshot product, int requestedQuantity) {
         inventoryStockQueryService.validateAvailableQuantity(product.id(), requestedQuantity);
     }
 
-    private void validateProductAvailable(ProductSnapshot product) {
+    private void validateProductAvailable(CatalogProductSnapshot product) {
         productPurchasePolicy.validateAvailable(product);
     }
 
-    private void validateCheckoutItem(CartItemEntity item) {
-        ProductSnapshot product = mapper.toProductSnapshot(item);
+    private void validatePlaceOrderItem(CartItemEntity item) {
+        CatalogProductSnapshot product = mapper.toCatalogProductSnapshot(item);
         productPurchasePolicy.validatePurchasable(product);
         inventoryStockQueryService.validateAvailableQuantity(product.id(), item.getQuantity());
     }

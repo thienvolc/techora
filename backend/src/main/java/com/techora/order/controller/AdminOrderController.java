@@ -7,7 +7,6 @@ import com.techora.order.application.command.UpdateOrderStatusCommand;
 import com.techora.order.application.usecase.OrderQueryService;
 import com.techora.order.application.usecase.UpdateOrderStatusUseCase;
 import com.techora.order.controller.request.UpdateOrderStatusRequest;
-import com.techora.order.controller.response.OrderResponse;
 import com.techora.orderhistory.OrderHistoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +30,7 @@ public class AdminOrderController {
     @GetMapping("/{orderId}")
     public ResponseDto getOrder(@PathVariable UUID orderId) {
         return responseFactory.success(
-                OrderResponse.from(orderQueryService.getAdminOrder(orderId)));
+                orderQueryService.getAdminOrder(orderId));
     }
 
     @GetMapping("/status-summary")
@@ -60,6 +59,6 @@ public class AdminOrderController {
                         principal.getUsername()
                 ));
         return responseFactory.success(
-                OrderResponse.from(order));
+                order);
     }
 }

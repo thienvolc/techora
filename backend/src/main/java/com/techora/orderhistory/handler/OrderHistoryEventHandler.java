@@ -26,7 +26,7 @@ public class OrderHistoryEventHandler {
                 .ownerUserId(event.userId())
                 .eventType(OrderHistoryEventType.ORDER_PLACED)
                 .newStatus(event.status())
-                .reason(OrderReasons.CHECKOUT_COMPLETED)
+                .reason(OrderReasons.PLACE_ORDER_COMPLETED)
                 .metadata(EMPTY_METADATA)
                 .actorType(OrderHistoryActorType.USER)
                 .actorId(event.userId())

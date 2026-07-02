@@ -3,10 +3,9 @@ package com.techora.payment.application.usecase;
 import com.techora.common.application.aop.BusinessException;
 import com.techora.common.application.constant.ResponseCode;
 import com.techora.payment.application.mapper.PaymentMapper;
+import com.techora.payment.application.model.VnPayReturnDetails;
 import com.techora.payment.application.port.persistence.PaymentAttemptRepository;
 import com.techora.payment.application.port.persistence.PaymentRepository;
-import com.techora.payment.application.result.PaymentResult;
-import com.techora.payment.application.result.VnPayReturnResult;
 import com.techora.payment.domain.entity.Payment;
 import com.techora.payment.domain.entity.PaymentAttempt;
 import lombok.RequiredArgsConstructor;
@@ -21,14 +20,14 @@ public class GetVnPayReturnUseCase {
     private final PaymentMapper paymentMapper;
 
     @Transactional(readOnly = true)
-    public VnPayReturnResult execute(String txnRef) {
-        PaymentAttempt attempt = getAttempt(txnRef);
+    public VnPayReturnDetails execute(String txnRef) {
+        PaymentAttempt attempt = getPaymentAttempt(txnRef);
         Payment payment = getPayment(attempt);
-        PaymentResult result = paymentMapper.toResult(payment, attempt);
-        return VnPayReturnResult.from(result);
+
+        return paymentMapper.toReturnDetails(payment, attempt);
     }
 
-    private PaymentAttempt getAttempt(String txnRef) {
+    private PaymentAttempt getPaymentAttempt(String txnRef) {
         return paymentAttemptRepository.findByProviderReference(txnRef)
                 .orElseThrow(() -> new BusinessException(ResponseCode.PAYMENT_NOT_FOUND));
     }

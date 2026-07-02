@@ -6,5 +6,5 @@ public interface VnPayGatewayPort {
 
     String buildPaymentUrl(CreateVnPayPaymentRequest request);
 
-    VnPayPaymentResult verifyAndParseIpn(Map<String, String> params);
+    VerifiedVnPayIpn verifyAndParseIpn(Map<String, String> params);
 }

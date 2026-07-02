@@ -2,9 +2,9 @@ package com.techora.orderhistory;
 
 import com.techora.common.application.aop.BusinessException;
 import com.techora.common.application.constant.ResponseCode;
+import com.techora.orderhistory.application.view.AdminOrderHistoryView;
+import com.techora.orderhistory.application.view.OrderHistoryView;
 import com.techora.orderhistory.dto.OrderHistoryRecord;
-import com.techora.orderhistory.dto.response.AdminOrderHistoryResponse;
-import com.techora.orderhistory.dto.response.OrderHistoryResponse;
 import com.techora.orderhistory.entity.OrderHistoryEntity;
 import com.techora.orderhistory.mapper.OrderHistoryMapper;
 import com.techora.orderhistory.repository.OrderHistoryRepository;
@@ -27,21 +27,21 @@ public class OrderHistoryService {
     }
 
     @Transactional(readOnly = true)
-    public List<OrderHistoryResponse> getUserEvents(UUID userId, UUID orderId) {
+    public List<OrderHistoryView> getUserEvents(UUID userId, UUID orderId) {
         List<OrderHistoryEntity> histories =
                 historyRepository.findByOrderIdAndOwnerUserIdOrderByCreatedAtAsc(orderId, userId);
         if (histories.isEmpty()) {
             throw new BusinessException(ResponseCode.ORDER_NOT_FOUND);
         }
         return histories.stream()
-                .map(historyMapper::toResponse)
+                .map(historyMapper::toView)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public List<AdminOrderHistoryResponse> getAdminEvents(UUID orderId) {
+    public List<AdminOrderHistoryView> getAdminEvents(UUID orderId) {
         return historyRepository.findByOrderIdOrderByCreatedAtAsc(orderId).stream()
-                .map(historyMapper::toAdminResponse)
+                .map(historyMapper::toAdminView)
                 .toList();
     }
 }

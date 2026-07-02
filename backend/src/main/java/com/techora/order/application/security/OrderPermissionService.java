@@ -14,7 +14,7 @@ import java.util.UUID;
 public class OrderPermissionService {
     private final OrderRepository orderRepository;
 
-    public Order getOwnedOrderForUpdate(UUID userId, UUID orderId) {
+    public Order getLockedOwnedOrderOrThrow(UUID userId, UUID orderId) {
         return orderRepository.findLockedWithItemsByIdAndUserId(orderId, userId)
                 .orElseThrow(() -> new BusinessException(ResponseCode.ORDER_NOT_FOUND));
     }

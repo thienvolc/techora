@@ -40,8 +40,8 @@ public class PaymentJpaEntity {
     @Column(nullable = false, length = 40)
     private PaymentStatus status;
 
-    @Column(name = "payment_window_expires_at", nullable = false)
-    private Instant paymentWindowExpiresAt;
+    @Column(name = "order_payment_deadline_at", nullable = false)
+    private Instant orderPaymentDeadlineAt;
 
     @Column(nullable = false)
     private Instant createdAt;
@@ -57,7 +57,7 @@ public class PaymentJpaEntity {
                 .username(payment.getUsername())
                 .amount(payment.getAmount())
                 .status(payment.getStatus())
-                .paymentWindowExpiresAt(payment.getPaymentWindowExpiresAt())
+                .orderPaymentDeadlineAt(payment.getOrderPaymentDeadlineAt())
                 .createdAt(payment.getCreatedAt())
                 .updatedAt(payment.getUpdatedAt())
                 .build();
@@ -71,7 +71,7 @@ public class PaymentJpaEntity {
                 .username(username)
                 .amount(amount)
                 .status(status)
-                .paymentWindowExpiresAt(paymentWindowExpiresAt)
+                .orderPaymentDeadlineAt(orderPaymentDeadlineAt)
                 .createdAt(createdAt)
                 .updatedAt(updatedAt)
                 .build();
