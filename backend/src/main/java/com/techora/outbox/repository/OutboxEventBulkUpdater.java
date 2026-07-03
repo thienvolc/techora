@@ -126,10 +126,4 @@ public class OutboxEventBulkUpdater {
                 .flatMapToInt(java.util.Arrays::stream)
                 .toArray();
     }
-
-    public record RetryUpdate(UUID id, String errorMessage, Instant nextAttemptAt, Instant now) {
-    }
-
-    public record FailureUpdate(UUID id, String errorMessage, Instant now) {
-    }
 }
