@@ -3,22 +3,22 @@ package com.techora.payment.infra.outbox;
 import com.techora.outbox.constant.OutboxAggregateType;
 import com.techora.outbox.constant.OutboxEventType;
 import com.techora.outbox.dto.OutboxEventRecord;
+import com.techora.outbox.dto.OutboxHeaders;
 import com.techora.outbox.port.OutboxEventPort;
 import com.techora.payment.domain.event.PaymentConfirmedEvent;
 import com.techora.payment.domain.event.PaymentFailedEvent;
 import com.techora.payment.domain.event.PaymentReconciliationRequiredEvent;
+import com.techora.payment.infra.outbox.schema.PaymentConfirmedPayload;
+import com.techora.payment.infra.outbox.schema.PaymentEventPayload;
+import com.techora.payment.infra.outbox.schema.PaymentFailedPayload;
+import com.techora.payment.infra.outbox.schema.PaymentReconciliationRequiredPayload;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.Map;
 import java.util.UUID;
 
 @Service
 public class PaymentOutboxRecorder {
-
-    private static final String HEADER_SOURCE_KEY = "source";
-    private static final String HEADER_EVENT_TYPE_KEY = "eventType";
-    private static final String SOURCE_PAYMENT = "payment";
 
     private final OutboxEventPort outboxEventPort;
     private final String paymentEventsTopic;
@@ -36,7 +36,7 @@ public class PaymentOutboxRecorder {
                 event.orderId(),
                 OutboxEventType.PAYMENT_CONFIRMED,
                 event.eventVersion(),
-                PaymentOutboxAttributes.confirmed(event)
+                PaymentConfirmedPayload.fromEvent(event)
         );
     }
 
@@ -46,7 +46,7 @@ public class PaymentOutboxRecorder {
                 event.orderId(),
                 OutboxEventType.PAYMENT_FAILED,
                 event.eventVersion(),
-                PaymentOutboxAttributes.failed(event)
+                PaymentFailedPayload.fromEvent(event)
         );
     }
 
@@ -56,7 +56,7 @@ public class PaymentOutboxRecorder {
                 event.orderId(),
                 OutboxEventType.PAYMENT_RECONCILIATION_REQUIRED,
                 event.eventVersion(),
-                PaymentOutboxAttributes.reconciliationRequired(event)
+                PaymentReconciliationRequiredPayload.fromEvent(event)
         );
     }
 
@@ -64,25 +64,18 @@ public class PaymentOutboxRecorder {
                                     UUID orderId,
                                     OutboxEventType eventType,
                                     int eventVersion,
-                                    Map<String, Object> attributes) {
+                                    PaymentEventPayload payload) {
 
-        var record = new OutboxEventRecord(
-                OutboxAggregateType.PAYMENT,
-                paymentId,
-                eventType,
-                paymentEventsTopic,
-                orderId.toString(),
-                eventVersion,
-                headers(eventType),
-                attributes
-        );
+        var record = OutboxEventRecord.builder()
+                .aggregateType(OutboxAggregateType.PAYMENT)
+                .aggregateId(paymentId)
+                .eventType(eventType)
+                .topic(paymentEventsTopic)
+                .messageKey(orderId.toString())
+                .eventVersion(eventVersion)
+                .headers(OutboxHeaders.of(PaymentOutboxHeaders.values()))
+                .data(payload)
+                .build();
         outboxEventPort.append(record);
-    }
-
-    private Map<String, String> headers(OutboxEventType eventType) {
-        return Map.of(
-                HEADER_SOURCE_KEY, SOURCE_PAYMENT,
-                HEADER_EVENT_TYPE_KEY, eventType.name()
-        );
     }
 }

@@ -4,5 +4,5 @@ import com.techora.outbox.dto.OutboxEventRecord;
 
 public interface OutboxEventPort {
 
-    void append(OutboxEventRecord record);
+    void append(OutboxEventRecord<?> record);
 }

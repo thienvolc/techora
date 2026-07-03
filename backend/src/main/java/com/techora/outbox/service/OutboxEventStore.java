@@ -14,7 +14,7 @@ public class OutboxEventStore implements OutboxEventPort {
     private final OutboxEventFactory outboxEventFactory;
 
     @Override
-    public void append(OutboxEventRecord record) {
+    public void append(OutboxEventRecord<?> record) {
         outboxEventRepository.save(outboxEventFactory.create(record));
     }
 }

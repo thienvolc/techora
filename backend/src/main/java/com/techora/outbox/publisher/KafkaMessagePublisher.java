@@ -1,7 +1,6 @@
-package com.techora.outbox.service;
+package com.techora.outbox.publisher;
 
 import com.techora.outbox.dto.OutboxMessage;
-import com.techora.outbox.port.OutboxMessagePublisher;
 import lombok.RequiredArgsConstructor;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -9,7 +8,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @RequiredArgsConstructor
@@ -22,14 +21,12 @@ public class KafkaMessagePublisher implements OutboxMessagePublisher {
     private final KafkaTemplate<String, String> kafkaTemplate;
 
     @Override
-    public void publish(OutboxMessage message) {
+    public CompletableFuture<Void> publish(OutboxMessage message) {
         try {
-            kafkaTemplate.send(toProducerRecord(message)).get();
-        } catch (InterruptedException ex) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("Interrupted while publishing outbox message", ex);
-        } catch (ExecutionException ex) {
-            throw new IllegalStateException("Unable to publish outbox message", ex);
+            return kafkaTemplate.send(toProducerRecord(message))
+                    .thenApply(result -> null);
+        } catch (RuntimeException ex) {
+            return CompletableFuture.failedFuture(ex);
         }
     }
 

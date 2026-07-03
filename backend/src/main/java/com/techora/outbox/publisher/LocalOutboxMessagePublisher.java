@@ -1,10 +1,11 @@
-package com.techora.outbox.service;
+package com.techora.outbox.publisher;
 
 import com.techora.outbox.dto.OutboxMessage;
-import com.techora.outbox.port.OutboxMessagePublisher;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
+
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @Slf4j
@@ -16,12 +17,13 @@ import org.springframework.stereotype.Service;
 public class LocalOutboxMessagePublisher implements OutboxMessagePublisher {
 
     @Override
-    public void publish(OutboxMessage message) {
+    public CompletableFuture<Void> publish(OutboxMessage message) {
         log.debug(
                 "Outbox message published in local mode. eventId={}, eventType={}, topic={}",
                 message.eventId(),
                 message.eventType(),
                 message.topic()
         );
+        return CompletableFuture.completedFuture(null);
     }
 }

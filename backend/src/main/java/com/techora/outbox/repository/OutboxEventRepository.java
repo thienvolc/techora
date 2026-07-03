@@ -1,7 +1,5 @@
 package com.techora.outbox.repository;
 
-import com.techora.outbox.constant.OutboxAggregateType;
-import com.techora.outbox.constant.OutboxEventType;
 import com.techora.outbox.entity.OutboxEventEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -48,6 +46,34 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEventEntity, 
     @Modifying
     @Query(value = """
             update outbox_events
+            set status = :processingStatus,
+                locked_at = :now,
+                locked_by = :lockedBy,
+                updated_at = :now
+            where id in (
+                select id
+                from outbox_events
+                where status = :pendingStatus
+                  and event_type in (:eventTypes)
+                  and (next_attempt_at is null or next_attempt_at <= :now)
+                order by created_at asc
+                limit :batchSize
+                for update skip locked
+            )
+            returning *
+            """, nativeQuery = true)
+    List<OutboxEventEntity> claimReadyEventsByTypes(
+            @Param("pendingStatus") String pendingStatus,
+            @Param("processingStatus") String processingStatus,
+            @Param("eventTypes") List<String> eventTypes,
+            @Param("now") Instant now,
+            @Param("lockedBy") String lockedBy,
+            @Param("batchSize") int batchSize
+    );
+
+    @Modifying
+    @Query(value = """
+            update outbox_events
             set status = :pendingStatus,
                 next_attempt_at = :now,
                 updated_at = :now,
@@ -61,16 +87,5 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEventEntity, 
             @Param("pendingStatus") String pendingStatus,
             @Param("staleBefore") Instant staleBefore,
             @Param("now") Instant now
-    );
-
-    List<OutboxEventEntity> findByAggregateTypeAndAggregateIdOrderByCreatedAtAsc(
-            OutboxAggregateType aggregateType,
-            UUID aggregateId
-    );
-
-    long countByAggregateTypeAndAggregateIdAndEventType(
-            OutboxAggregateType aggregateType,
-            UUID aggregateId,
-            OutboxEventType eventType
     );
 }

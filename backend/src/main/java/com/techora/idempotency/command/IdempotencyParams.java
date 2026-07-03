@@ -14,7 +14,7 @@ public record IdempotencyParams(
         attributes = Map.copyOf(
                 Objects.requireNonNull(
                         attributes,
-                        "Idempotency attributes are required"));
+                        "Idempotency data are required"));
     }
 
     public static IdempotencyParams placeOrder(UUID userId) {

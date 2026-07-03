@@ -14,6 +14,8 @@ import java.util.UUID;
 @Table(name = "outbox_events", indexes = {
         @Index(name = "idx_outbox_events_status_next_attempt", columnList = "status, next_attempt_at"),
         @Index(name = "idx_outbox_events_status_next_attempt_created", columnList = "status, next_attempt_at, created_at"),
+        @Index(name = "idx_outbox_events_relay_claim", columnList = "status, event_type, next_attempt_at, created_at"),
+        @Index(name = "idx_outbox_events_status_locked_at", columnList = "status, locked_at"),
         @Index(name = "idx_outbox_events_aggregate", columnList = "aggregate_type, aggregate_id")
 })
 @Getter
@@ -144,5 +146,13 @@ public class OutboxEventEntity implements Persistable<UUID> {
         lastError = null;
         lockedAt = null;
         lockedBy = null;
+    }
+
+    public int nextRetryAttempt() {
+        return retryCount + 1;
+    }
+
+    public boolean isFailed() {
+        return status == OutboxEventStatus.FAILED;
     }
 }
