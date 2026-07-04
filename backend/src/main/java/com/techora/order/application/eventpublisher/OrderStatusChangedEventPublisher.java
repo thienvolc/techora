@@ -5,14 +5,10 @@ import com.techora.order.domain.event.OrderStatusChangedEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.Clock;
-import java.time.Instant;
-
 @Service
 @RequiredArgsConstructor
 public class OrderStatusChangedEventPublisher {
     private final InternalEventPublisher internalEventPublisher;
-    private final Clock clock;
 
     public void publish(OrderStatusChange statusChange) {
         internalEventPublisher.publish(
@@ -25,7 +21,7 @@ public class OrderStatusChangedEventPublisher {
                         statusChange.actor().actorId(),
                         statusChange.actor().actorName(),
                         statusChange.actor().actorType(),
-                        Instant.now(clock)
+                        statusChange.order().getUpdatedAt()
                 ));
     }
 }

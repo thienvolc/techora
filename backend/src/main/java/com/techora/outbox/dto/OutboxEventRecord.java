@@ -27,6 +27,7 @@ public record OutboxEventRecord<T>(
         Objects.requireNonNull(aggregateType, "aggregateType must not be null");
         Objects.requireNonNull(aggregateId, "aggregateId must not be null");
         Objects.requireNonNull(eventType, "eventType must not be null");
+        Objects.requireNonNull(headers, "headers must not be null");
         messageKey = StringUtils.hasText(messageKey) ? messageKey : aggregateId.toString();
         eventVersion = eventVersion <= 0 ? DEFAULT_EVENT_VERSION : eventVersion;
     }

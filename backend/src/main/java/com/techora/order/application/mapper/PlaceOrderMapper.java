@@ -4,11 +4,13 @@ import com.techora.cart.dto.order.CartItemSnapshot;
 import com.techora.cart.dto.order.CartSnapshot;
 import com.techora.order.application.command.CreateOrderCommand;
 import com.techora.order.application.command.CreateOrderItemCommand;
+import com.techora.order.application.command.PlaceOrderCommand;
 import com.techora.order.application.model.OrderPrice;
 import com.techora.order.application.model.PlaceOrderItemView;
 import com.techora.order.application.model.PlaceOrderView;
 import com.techora.order.application.port.inventory.ReserveOrderInventoryCommand;
 import com.techora.order.application.port.inventory.ReserveOrderInventoryItemCommand;
+import com.techora.order.application.port.payment.InitiateOrderPaymentCommand;
 import com.techora.order.application.port.payment.InitiatedOrderPayment;
 import com.techora.order.domain.entity.Order;
 import com.techora.order.domain.entity.OrderItem;
@@ -97,10 +99,10 @@ public class PlaceOrderMapper {
         );
     }
 
-    public ReserveOrderInventoryCommand toReserveInventoryCommand(Order order, Instant expiresAt) {
+    public ReserveOrderInventoryCommand toReserveInventoryCommand(Order order) {
         return new ReserveOrderInventoryCommand(
                 order.getId(),
-                expiresAt,
+                order.getPaymentDeadlineAt(),
                 order.getItems().stream()
                         .map(this::toReserveInventoryItemCommand)
                         .toList()
@@ -111,6 +113,16 @@ public class PlaceOrderMapper {
         return new ReserveOrderInventoryItemCommand(
                 item.getProductId(),
                 item.getQuantity()
+        );
+    }
+
+    public InitiateOrderPaymentCommand toInitiateOrderPaymentCommand(Order stockReservedOrder, PlaceOrderCommand command) {
+        return new  InitiateOrderPaymentCommand(
+                stockReservedOrder.getUserId(),
+                stockReservedOrder.getId(),
+                stockReservedOrder.getPaymentDeadlineAt(),
+                command.ipAddress(),
+                command.idempotencyKey()
         );
     }
 }

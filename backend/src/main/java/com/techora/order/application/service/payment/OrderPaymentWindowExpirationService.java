@@ -31,6 +31,10 @@ public class OrderPaymentWindowExpirationService {
     @Value("${order.payment-window-expiration-job.batch-size:${payment.expiration-job.batch-size:100}}")
     private int batchSize;
 
+    // TODO: We use shedlock for expire orders job,
+    //  its' mean only one running instance at the same time
+    //  For scaling, we should use the same strategy in outbox module
+    //  which currently uses the lock machenism and can work on multiple instance
     @Scheduled(fixedDelayString = "${order.payment-window-expiration-job.fixed-delay-ms:${payment.expiration-job.fixed-delay-ms:60000}}")
     @SchedulerLock(
             name = "orderPaymentWindowExpirationService.expireUnpaidOrders",

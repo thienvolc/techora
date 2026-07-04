@@ -19,9 +19,9 @@ public class LocalOutboxMessagePublisher implements OutboxMessagePublisher {
     @Override
     public CompletableFuture<Void> publish(OutboxMessage message) {
         log.debug(
-                "Outbox message published in local mode. eventId={}, eventType={}, topic={}",
+                "Outbox message published in local mode. eventId={}, messageKey={}, topic={}",
                 message.eventId(),
-                message.eventType(),
+                message.messageKey(),
                 message.topic()
         );
         return CompletableFuture.completedFuture(null);

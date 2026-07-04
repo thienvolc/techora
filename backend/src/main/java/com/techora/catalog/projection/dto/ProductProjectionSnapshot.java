@@ -1,6 +1,6 @@
 package com.techora.catalog.projection.dto;
 
-import com.techora.catalog.entity.ProductStatus;
+import com.techora.catalog.domain.valueobject.ProductStatus;
 
 import java.math.BigDecimal;
 import java.time.Instant;

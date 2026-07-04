@@ -3,7 +3,7 @@ package com.techora.inventory.controller;
 import com.techora.common.application.dto.response.ResponseDto;
 import com.techora.common.application.service.ResponseFactory;
 import com.techora.inventory.application.service.InventoryItemService;
-import com.techora.inventory.application.service.InventoryReservationReconciliationService;
+import com.techora.inventory.application.scheduler.InventoryReservationReconciliationService;
 import com.techora.inventory.controller.constant.InventoryPageConstant;
 import com.techora.inventory.controller.request.ReduceStockRequest;
 import jakarta.validation.Valid;

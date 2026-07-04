@@ -41,14 +41,7 @@ public class OrderCreator {
     }
 
     private void publishOrderPlacedEvent(Order order) {
-        internalEventPublisher.publish(new OrderPlacedEvent(
-                order.getId(),
-                order.getUserId(),
-                order.getUsername(),
-                order.getStatus(),
-                order.getTotal(),
-                Instant.now(clock)
-        ));
+        internalEventPublisher.publish(OrderPlacedEvent.from(order));
     }
 
     private Instant now() {

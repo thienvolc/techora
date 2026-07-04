@@ -25,6 +25,7 @@ public class OutboxEventFactory {
         UUID eventId = UUID.randomUUID();
         IntegrationEventEnvelope<?> payload = IntegrationEventEnvelope.from(eventId, record);
         Map<String, String> headers = buildEventHeaders(eventId, record);
+
         String topic = StringUtils.getOrDefault(record.topic(), eventPublisherProperties.topic());
         Instant now = Instant.now();
 

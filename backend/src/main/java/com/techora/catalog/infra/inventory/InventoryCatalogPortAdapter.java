@@ -1,8 +1,8 @@
 package com.techora.catalog.infra.inventory;
 
-import com.techora.catalog.dto.CatalogCategorySnapshot;
-import com.techora.catalog.dto.CatalogProductSnapshot;
-import com.techora.catalog.service.ProductCatalogQueryService;
+import com.techora.catalog.application.model.CatalogCategorySnapshot;
+import com.techora.catalog.application.model.CatalogProductSnapshot;
+import com.techora.catalog.application.service.ProductCatalogQueryService;
 import com.techora.inventory.application.port.catalog.InventoryCatalogCategory;
 import com.techora.inventory.application.port.catalog.InventoryCatalogPort;
 import com.techora.inventory.application.port.catalog.InventoryCatalogProduct;

@@ -5,7 +5,7 @@ import com.techora.inventory.application.command.ReserveInventoryCommand;
 import com.techora.inventory.application.command.ReserveInventoryItem;
 import com.techora.inventory.application.mapper.ReservationMapper;
 import com.techora.inventory.application.repository.InventoryReservationRepository;
-import com.techora.inventory.application.result.InventoryStockSnapshot;
+import com.techora.inventory.domain.entity.InventoryItemEntity;
 import com.techora.inventory.domain.entity.InventoryReservationEntity;
 import com.techora.inventory.domain.event.StockReducedEvent;
 import lombok.RequiredArgsConstructor;
@@ -76,21 +76,17 @@ public class InventoryReservationService {
     }
 
     private void confirmReservation(InventoryReservationEntity reservation) {
-        InventoryStockSnapshot stock = confirmProductReservedQuantity(reservation);
+        InventoryItemEntity item = confirmProductReservedQuantity(reservation);
         reservation.markConfirmed();
-        publishStockReducedEvent(stock, reservation.getQuantity());
+        publishStockReducedEvent(item, reservation.getQuantity());
     }
 
-    private InventoryStockSnapshot confirmProductReservedQuantity(InventoryReservationEntity reservation) {
+    private InventoryItemEntity confirmProductReservedQuantity(InventoryReservationEntity reservation) {
         return inventoryItemService.confirmReservedStock(reservation.getProductId(), reservation.getQuantity());
     }
 
-    private void publishStockReducedEvent(InventoryStockSnapshot stock, int quantity) {
-        internalEventPublisher.publish(StockReducedEvent.of(
-                stock.productId(),
-                quantity,
-                stock.quantityOnHand(),
-                stock.updatedAt()));
+    private void publishStockReducedEvent(InventoryItemEntity item, int quantity) {
+        internalEventPublisher.publish(StockReducedEvent.from(item, quantity));
     }
 
 

@@ -2,9 +2,9 @@ package com.techora.inventory.application.mapper;
 
 import com.techora.common.application.dto.response.PageResponse;
 import com.techora.inventory.application.port.catalog.InventoryCatalogProduct;
-import com.techora.inventory.application.result.InventoryStockSnapshot;
-import com.techora.inventory.application.view.InventoryCategoryView;
-import com.techora.inventory.application.view.InventoryProductStockView;
+import com.techora.inventory.application.model.InventoryStockSnapshot;
+import com.techora.inventory.application.model.InventoryCategoryView;
+import com.techora.inventory.application.model.InventoryProductStockView;
 import com.techora.inventory.domain.entity.InventoryItemEntity;
 import lombok.NonNull;
 import org.springframework.data.domain.Page;

@@ -22,7 +22,7 @@ public class OutboxRetryPolicy {
         return now.plusSeconds(delaySeconds);
     }
 
-    public Instant staleProcessingBefore(Instant now) {
+    public Instant saleProcessingBefore(Instant now) {
         return now.minusSeconds(properties.processingTimeoutSeconds());
     }
 

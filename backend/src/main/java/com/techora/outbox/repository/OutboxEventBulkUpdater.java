@@ -6,10 +6,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.stereotype.Repository;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -20,9 +22,9 @@ public class OutboxEventBulkUpdater {
     private final JdbcTemplate jdbcTemplate;
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
-    public int markPublished(List<OutboxRelayOutcome> outcomes, String lockedBy) {
+    public List<UUID> markPublished(List<OutboxRelayOutcome> outcomes, String lockedBy) {
         if (outcomes.isEmpty()) {
-            return 0;
+            return List.of();
         }
 
         String sql = """
@@ -36,19 +38,27 @@ public class OutboxEventBulkUpdater {
                 where id in (:ids)
                   and status = :processingStatus
                   and locked_by = :lockedBy
+                returning id
                 """;
 
-        List<UUID> ids = outcomes.stream().map(OutboxRelayOutcome::eventId).toList();
+        List<UUID> eventIds = outcomes.stream()
+                .map(OutboxRelayOutcome::eventId)
+                .toList();
+
         Instant now = outcomes.getFirst().occurredAt();
 
-        MapSqlParameterSource params = new MapSqlParameterSource()
+        SqlParameterSource params = new MapSqlParameterSource()
                 .addValue("publishedStatus", OutboxEventStatus.PUBLISHED.name())
                 .addValue("processingStatus", OutboxEventStatus.PROCESSING.name())
                 .addValue("lockedBy", lockedBy)
                 .addValue("now", Timestamp.from(now))
-                .addValue("ids", ids);
+                .addValue("ids", eventIds);
 
-        return namedParameterJdbcTemplate.update(sql, params);
+        return namedParameterJdbcTemplate.query(
+                sql,
+                params,
+                (rs, rowNum) -> rs.getObject("id", UUID.class)
+        );
     }
 
     public int[] scheduleRetries(List<OutboxRelayOutcome> outcomes, String lockedBy) {
@@ -122,8 +132,8 @@ public class OutboxEventBulkUpdater {
     }
 
     private int[] flatten(int[][] updateCounts) {
-        return java.util.Arrays.stream(updateCounts)
-                .flatMapToInt(java.util.Arrays::stream)
+        return Arrays.stream(updateCounts)
+                .flatMapToInt(Arrays::stream)
                 .toArray();
     }
 }

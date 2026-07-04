@@ -1,6 +1,6 @@
 package com.techora.cart.entity;
 
-import com.techora.catalog.entity.ProductEntity;
+import com.techora.catalog.domain.entity.ProductEntity;
 import jakarta.persistence.*;
 import lombok.*;
 

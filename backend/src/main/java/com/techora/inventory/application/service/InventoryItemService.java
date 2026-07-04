@@ -5,11 +5,11 @@ import com.techora.common.application.constant.ResponseCode;
 import com.techora.common.application.dto.response.PageResponse;
 import com.techora.common.domain.event.InternalEventPublisher;
 import com.techora.inventory.application.mapper.InventoryItemMapper;
+import com.techora.inventory.application.model.InventoryProductStockView;
+import com.techora.inventory.application.model.InventoryStockSnapshot;
 import com.techora.inventory.application.port.catalog.InventoryCatalogPort;
 import com.techora.inventory.application.port.catalog.InventoryCatalogProduct;
 import com.techora.inventory.application.repository.InventoryItemRepository;
-import com.techora.inventory.application.result.InventoryStockSnapshot;
-import com.techora.inventory.application.view.InventoryProductStockView;
 import com.techora.inventory.domain.entity.InventoryItemEntity;
 import com.techora.inventory.domain.event.InventoryStockChangedEvent;
 import lombok.RequiredArgsConstructor;
@@ -72,73 +72,48 @@ public class InventoryItemService {
         }
     }
 
-
     @Transactional
     public InventoryProductStockView reduceStock(UUID productId, int quantity) {
-        InventoryItemEntity item = reduceQuantity(productId, quantity);
         InventoryCatalogProduct product = inventoryCatalogPort.getProduct(productId);
+
+        InventoryItemEntity item = getLockedItemOrCreate(productId);
+        item.reduce(quantity);
+
         publishInventoryStockChanged(item);
         return inventoryItemMapper.toProductStockView(product, item.getQuantityOnHand());
     }
 
-    private InventoryItemEntity reduceQuantity(UUID productId, int quantity) {
-        InventoryItemEntity item = getLockedItemOrCreate(productId);
-        item.reduce(quantity);
-        return item;
-    }
-
-
     @Transactional
     public InventoryStockSnapshot initializeProductStock(UUID productId, int quantity) {
-        InventoryItemEntity item = updateQuantity(productId, quantity);
-        publishInventoryStockChanged(item);
-        return inventoryItemMapper.toStockSnapshot(item);
-    }
-
-    private InventoryItemEntity updateQuantity(UUID productId, int quantity) {
         InventoryItemEntity item = getLockedItemOrCreate(productId);
         item.updateQuantityOnHand(quantity);
-        return item;
+
+        publishInventoryStockChanged(item);
+        return inventoryItemMapper.toStockSnapshot(item);
     }
 
 
     @Transactional
     public void reserveStock(UUID productId, int quantity) {
-        InventoryItemEntity item = reserveQuantity(productId, quantity);
-        publishInventoryStockChanged(item);
-    }
-
-    private InventoryItemEntity reserveQuantity(UUID productId, int quantity) {
         InventoryItemEntity item = getLockedItemOrCreate(productId);
         item.reserve(quantity);
-        return item;
+        publishInventoryStockChanged(item);
     }
-
 
     @Transactional
-    public InventoryStockSnapshot confirmReservedStock(UUID productId, int quantity) {
-        InventoryItemEntity item = confirmReservedQuantity(productId, quantity);
-        publishInventoryStockChanged(item);
-        return inventoryItemMapper.toStockSnapshot(item);
-    }
-
-    private InventoryItemEntity confirmReservedQuantity(UUID productId, int quantity) {
+    public InventoryItemEntity confirmReservedStock(UUID productId, int quantity) {
         InventoryItemEntity item = getLockedItemOrCreate(productId);
         item.confirmReserved(quantity);
+
+        publishInventoryStockChanged(item);
         return item;
     }
-
 
     @Transactional
     public void releaseReserved(UUID productId, int quantity) {
-        InventoryItemEntity item = releaseReservedQuantity(productId, quantity);
-        publishInventoryStockChanged(item);
-    }
-
-    private InventoryItemEntity releaseReservedQuantity(UUID productId, int quantity) {
         InventoryItemEntity item = getLockedItemOrCreate(productId);
         item.releaseReserved(quantity);
-        return item;
+        publishInventoryStockChanged(item);
     }
 
 
@@ -154,6 +129,8 @@ public class InventoryItemService {
                 .orElseGet(() -> createItemFromProduct(productId));
     }
 
+    // TODO: We should create inventory item when product is created
+    //  not use the lazy strategy in current case it may cause race
     private InventoryItemEntity createItemFromProduct(UUID productId) {
         InventoryCatalogProduct product = inventoryCatalogPort.getProduct(productId);
         Instant now = now();

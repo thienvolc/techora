@@ -2,9 +2,9 @@ package com.techora.catalog.controller;
 
 import com.techora.common.application.dto.response.ResponseDto;
 import com.techora.common.application.service.ResponseFactory;
-import com.techora.catalog.service.ProductAdminService;
-import com.techora.catalog.dto.request.CreateProductRequest;
-import com.techora.catalog.dto.request.ProductRequest;
+import com.techora.catalog.application.service.ProductAdminService;
+import com.techora.catalog.controller.request.CreateProductRequest;
+import com.techora.catalog.controller.request.ProductRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;

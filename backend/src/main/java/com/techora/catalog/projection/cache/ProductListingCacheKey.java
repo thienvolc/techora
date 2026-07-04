@@ -1,6 +1,6 @@
 package com.techora.catalog.projection.cache;
 
-import com.techora.catalog.dto.request.ProductFilter;
+import com.techora.catalog.controller.request.ProductFilter;
 import org.springframework.data.domain.Pageable;
 
 import java.util.Locale;

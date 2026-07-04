@@ -1,7 +1,7 @@
 package com.techora.catalog.projection.cache;
 
-import com.techora.catalog.dto.constant.ProductPageConstant;
-import com.techora.catalog.dto.request.ProductFilter;
+import com.techora.catalog.controller.constant.ProductPageConstant;
+import com.techora.catalog.controller.request.ProductFilter;
 import org.springframework.data.domain.Pageable;
 
 public final class ProductListingCachePolicy {

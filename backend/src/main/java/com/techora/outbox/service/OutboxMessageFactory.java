@@ -11,7 +11,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class OutboxMessageFactory {
 
-    OutboxHeadersCodec outboxHeadersCodec;
+    private final OutboxHeadersCodec outboxHeadersCodec;
 
     public OutboxMessage toMessage(OutboxEventEntity event) {
         Map<String, String> headers = outboxHeadersCodec.deserialize(event);

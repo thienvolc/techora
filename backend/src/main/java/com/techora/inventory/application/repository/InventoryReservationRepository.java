@@ -1,7 +1,7 @@
 package com.techora.inventory.application.repository;
 
 import com.techora.inventory.domain.entity.InventoryReservationEntity;
-import com.techora.inventory.application.result.InventoryReservationMismatchRow;
+import com.techora.inventory.application.model.InventoryReservationMismatchRow;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;

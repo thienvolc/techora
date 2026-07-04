@@ -18,37 +18,47 @@ public class OutboxBatchPublisher {
     private final OutboxMessagePublisher messagePublisher;
 
     public List<PublishResult> publishBatch(List<OutboxEventEntity> events) {
-        List<CompletableFuture<PublishResult>> futures = events.stream()
-                .map(this::publishAsync)
-                .toList();
+        List<CompletableFuture<PublishResult>> publishedFutures = publishAll(events);
+        return awaitAll(publishedFutures);
+    }
 
-        CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
+    private List<CompletableFuture<PublishResult>> publishAll(List<OutboxEventEntity> events) {
+        return events.stream()
+                .map(this::publishSingleEvent)
+                .toList();
+    }
+
+    private List<PublishResult> awaitAll(List<CompletableFuture<PublishResult>> futures) {
         return futures.stream()
                 .map(CompletableFuture::join)
                 .toList();
     }
 
-    private CompletableFuture<PublishResult> publishAsync(OutboxEventEntity event) {
+    private CompletableFuture<PublishResult> publishSingleEvent(OutboxEventEntity event) {
         try {
             OutboxMessage message = outboxMessageFactory.toMessage(event);
             return messagePublisher.publish(message)
-                    .handle((ignored, throwable) ->
-                            throwable == null
-                                    ? PublishResult.success(event)
-                                    : PublishResult.failure(event, toRuntimeException(throwable)));
+                    .handle((ignoredResult, throwable) -> evaluateOutcome(event, throwable));
         } catch (RuntimeException ex) {
             return CompletableFuture.completedFuture(PublishResult.failure(event, ex));
         }
     }
 
-    private RuntimeException toRuntimeException(Throwable throwable) {
-        Throwable cause = throwable instanceof CompletionException && throwable.getCause() != null
-                ? throwable.getCause()
-                : throwable;
-        if (cause instanceof RuntimeException runtimeException) {
-            return runtimeException;
+    private PublishResult evaluateOutcome(OutboxEventEntity event, Throwable throwable) {
+        if (throwable == null) {
+            return PublishResult.success(event);
         }
-        return new IllegalStateException(cause);
+        return PublishResult.failure(event, toRuntimeException(throwable));
+    }
+
+    private RuntimeException toRuntimeException(Throwable throwable) {
+        Throwable cause = (throwable instanceof CompletionException ce && ce.getCause() != null)
+                ? ce.getCause()
+                : throwable;
+
+        return cause instanceof RuntimeException rex
+                ? rex
+                : new IllegalStateException("Unexpected checked exception during publish", cause);
     }
 
     public record PublishResult(
@@ -63,7 +73,7 @@ public class OutboxBatchPublisher {
             return new PublishResult(event, failure);
         }
 
-        public boolean succeeded() {
+        public boolean isSuccess() {
             return failure == null;
         }
     }

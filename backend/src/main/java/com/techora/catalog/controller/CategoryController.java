@@ -2,7 +2,7 @@ package com.techora.catalog.controller;
 
 import com.techora.common.application.dto.response.ResponseDto;
 import com.techora.common.application.service.ResponseFactory;
-import com.techora.catalog.service.CategoryService;
+import com.techora.catalog.application.service.CategoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

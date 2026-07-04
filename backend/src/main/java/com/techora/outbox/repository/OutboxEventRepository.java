@@ -7,81 +7,21 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 
 public interface OutboxEventRepository extends JpaRepository<OutboxEventEntity, UUID> {
-    @Query(value = """
-            select *
-            from outbox_events
-            where status = :status
-              and (next_attempt_at is null or next_attempt_at <= :now)
-            order by created_at asc
-            limit :limit
-            for update skip locked
-            """, nativeQuery = true)
-    List<OutboxEventEntity> findReadyEvents(
-            @Param("status") String status,
-            @Param("now") Instant now,
-            @Param("limit") int limit
-    );
-
-    @Query(value = """
-            select *
-            from outbox_events
-            where status = :status
-              and event_type = :eventType
-              and (next_attempt_at is null or next_attempt_at <= :now)
-            order by created_at asc
-            limit :limit
-            for update skip locked
-            """, nativeQuery = true)
-    List<OutboxEventEntity> findReadyEventsByType(
-            @Param("status") String status,
-            @Param("eventType") String eventType,
-            @Param("now") Instant now,
-            @Param("limit") int limit
-    );
 
     @Modifying
-    @Query(value = """
-            update outbox_events
-            set status = :processingStatus,
-                locked_at = :now,
-                locked_by = :lockedBy,
-                updated_at = :now
-            where id in (
-                select id
-                from outbox_events
-                where status = :pendingStatus
-                  and event_type in (:eventTypes)
-                  and (next_attempt_at is null or next_attempt_at <= :now)
-                order by created_at asc
-                limit :batchSize
-                for update skip locked
-            )
-            returning *
-            """, nativeQuery = true)
-    List<OutboxEventEntity> claimReadyEventsByTypes(
-            @Param("pendingStatus") String pendingStatus,
-            @Param("processingStatus") String processingStatus,
-            @Param("eventTypes") List<String> eventTypes,
-            @Param("now") Instant now,
-            @Param("lockedBy") String lockedBy,
-            @Param("batchSize") int batchSize
-    );
-
-    @Modifying
-    @Query(value = """
-            update outbox_events
-            set status = :pendingStatus,
-                next_attempt_at = :now,
-                updated_at = :now,
-                locked_at = null,
-                locked_by = null
-            where status = :processingStatus
-              and locked_at <= :staleBefore
-            """, nativeQuery = true)
+    @Query("""
+            update OutboxEventEntity e
+            set e.status = :pendingStatus,
+                e.nextAttemptAt = :now,
+                e.updatedAt = :now,
+                e.lockedAt = null,
+                e.lockedBy = null
+            where e.status = :processingStatus
+              and e.lockedAt <= :staleBefore
+            """)
     int releaseStaleProcessingEvents(
             @Param("processingStatus") String processingStatus,
             @Param("pendingStatus") String pendingStatus,

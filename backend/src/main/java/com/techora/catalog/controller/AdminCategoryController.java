@@ -2,8 +2,8 @@ package com.techora.catalog.controller;
 
 import com.techora.common.application.dto.response.ResponseDto;
 import com.techora.common.application.service.ResponseFactory;
-import com.techora.catalog.service.CategoryService;
-import com.techora.catalog.dto.request.CategoryRequest;
+import com.techora.catalog.application.service.CategoryService;
+import com.techora.catalog.controller.request.CategoryRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;

@@ -2,9 +2,9 @@ package com.techora.catalog.controller;
 
 import com.techora.common.application.dto.response.ResponseDto;
 import com.techora.common.application.service.ResponseFactory;
-import com.techora.catalog.dto.constant.ProductPageConstant;
-import com.techora.catalog.service.ProductPublicService;
-import com.techora.catalog.dto.request.ProductFilter;
+import com.techora.catalog.controller.constant.ProductPageConstant;
+import com.techora.catalog.application.service.ProductPublicService;
+import com.techora.catalog.controller.request.ProductFilter;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;

@@ -2,7 +2,7 @@ package com.techora.inventory.infra.catalog;
 
 import com.techora.catalog.application.port.inventory.CatalogInventoryPort;
 import com.techora.catalog.application.port.inventory.CatalogInventoryStock;
-import com.techora.inventory.application.result.InventoryStockSnapshot;
+import com.techora.inventory.application.model.InventoryStockSnapshot;
 import com.techora.inventory.application.service.InventoryItemService;
 import com.techora.inventory.application.service.InventoryStockQueryService;
 import lombok.RequiredArgsConstructor;
