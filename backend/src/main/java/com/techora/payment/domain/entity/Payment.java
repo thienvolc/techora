@@ -85,7 +85,7 @@ public class Payment extends AggregateRoot<UUID> {
     }
 
     public void markExpired(Instant now) {
-        if (isExpired(now)) {
+        if (status == PaymentStatus.EXPIRED) {
             return;
         }
         changeStatus(PaymentStatus.EXPIRED, now);
@@ -107,20 +107,8 @@ public class Payment extends AggregateRoot<UUID> {
         updatedAt = now;
     }
 
-    public boolean canCreateAttempt() {
+    public boolean acceptsNewAttempt() {
         return isPending();
-    }
-
-    private boolean isExpired(Instant now) {
-        return status == PaymentStatus.EXPIRED || isPendingExpired(now);
-    }
-
-    private boolean isPendingExpired(Instant now) {
-        return isPending() && isPastDue(now);
-    }
-
-    private boolean isPastDue(Instant now) {
-        return !orderPaymentDeadlineAt.isAfter(now);
     }
 
     public boolean isReconciliationRequired() {

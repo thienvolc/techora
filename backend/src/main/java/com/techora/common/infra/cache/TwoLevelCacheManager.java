@@ -8,6 +8,8 @@ import org.springframework.cache.interceptor.CacheErrorHandler;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public class TwoLevelCacheManager implements CacheManager {
 
@@ -17,6 +19,7 @@ public class TwoLevelCacheManager implements CacheManager {
     private final RedisCacheAvailability redisCacheAvailability;
     private final CacheErrorHandler cacheErrorHandler;
     private final Set<String> cacheNames;
+    private final ConcurrentMap<String, Cache> caches = new ConcurrentHashMap<>();
 
     public TwoLevelCacheManager(CacheManager localCacheManager,
                                 CacheManager redisCacheManager,
@@ -36,6 +39,10 @@ public class TwoLevelCacheManager implements CacheManager {
 
     @Override
     public Cache getCache(String name) {
+        return caches.computeIfAbsent(name, this::createCache);
+    }
+
+    private Cache createCache(String name) {
         Cache localCache = localCacheManager.getCache(name);
         Cache redisCache = redisCacheManager.getCache(name);
         if (localCache == null || redisCache == null) {
@@ -58,5 +65,6 @@ public class TwoLevelCacheManager implements CacheManager {
     public void resetCaches() {
         localCacheManager.resetCaches();
         redisCacheManager.resetCaches();
+        caches.clear();
     }
 }

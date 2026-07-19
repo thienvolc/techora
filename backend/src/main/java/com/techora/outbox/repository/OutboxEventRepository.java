@@ -1,6 +1,7 @@
 package com.techora.outbox.repository;
 
 import com.techora.outbox.entity.OutboxEventEntity;
+import com.techora.outbox.constant.OutboxEventStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -23,8 +24,8 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEventEntity, 
               and e.lockedAt <= :staleBefore
             """)
     int releaseStaleProcessingEvents(
-            @Param("processingStatus") String processingStatus,
-            @Param("pendingStatus") String pendingStatus,
+            @Param("processingStatus") OutboxEventStatus processingStatus,
+            @Param("pendingStatus") OutboxEventStatus pendingStatus,
             @Param("staleBefore") Instant staleBefore,
             @Param("now") Instant now
     );

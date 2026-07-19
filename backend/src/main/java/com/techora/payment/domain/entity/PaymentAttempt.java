@@ -4,6 +4,7 @@ import com.techora.common.application.aop.BusinessException;
 import com.techora.common.application.constant.ResponseCode;
 import com.techora.payment.domain.valueobject.PaymentAttemptStatus;
 import com.techora.payment.domain.valueobject.PaymentProvider;
+import com.techora.payment.domain.valueobject.PaymentReconciliationReason;
 import com.techora.payment.domain.valueobject.ProviderPaymentEvidence;
 import lombok.Builder;
 import lombok.Getter;
@@ -34,6 +35,7 @@ public class PaymentAttempt extends AggregateRoot<UUID> {
     private Instant failedAt;
     private Instant expiredAt;
     private Instant reconciliationResolvedAt;
+    private PaymentReconciliationReason reconciliationReason;
     private String reconciliationNote;
 
     private Instant updatedAt;
@@ -57,6 +59,7 @@ public class PaymentAttempt extends AggregateRoot<UUID> {
                            Instant failedAt,
                            Instant expiredAt,
                            Instant reconciliationResolvedAt,
+                           PaymentReconciliationReason reconciliationReason,
                            String reconciliationNote,
                            Instant createdAt,
                            Instant updatedAt) {
@@ -79,6 +82,7 @@ public class PaymentAttempt extends AggregateRoot<UUID> {
         this.failedAt = failedAt;
         this.expiredAt = expiredAt;
         this.reconciliationResolvedAt = reconciliationResolvedAt;
+        this.reconciliationReason = reconciliationReason;
         this.reconciliationNote = reconciliationNote;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -126,19 +130,21 @@ public class PaymentAttempt extends AggregateRoot<UUID> {
     }
 
     public void markExpired(Instant now) {
-        if (!isExpired(now)) {
+        if (!isPendingPastDue(now)) {
             return;
         }
         updateStatus(PaymentAttemptStatus.EXPIRED, now);
         expiredAt = now;
     }
 
-    public void markReconciliationRequired(ProviderPaymentEvidence evidence) {
+    public void markReconciliationRequired(ProviderPaymentEvidence evidence,
+                                           PaymentReconciliationReason reason) {
         if (isReconciliationRequired()) {
             return;
         }
         updateStatus(PaymentAttemptStatus.RECONCILIATION_REQUIRED, evidence.receivedAt());
         recordProviderEvidence(evidence);
+        reconciliationReason = reason;
     }
 
     public void resolveReconciliation(String note, Instant now) {
@@ -166,8 +172,12 @@ public class PaymentAttempt extends AggregateRoot<UUID> {
         providerResultReceivedAt = evidence.receivedAt();
     }
 
-    public boolean isExpired(Instant now) {
+    public boolean isPendingPastDue(Instant now) {
         return isPending() && isPastDue(now);
+    }
+
+    public boolean isExpiredStatus() {
+        return status == PaymentAttemptStatus.EXPIRED;
     }
 
     public boolean canAutoConfirm(Instant now) {
@@ -182,11 +192,11 @@ public class PaymentAttempt extends AggregateRoot<UUID> {
         return isPending();
     }
 
-    public boolean isPending() {
+    private boolean isPending() {
         return status == PaymentAttemptStatus.PENDING;
     }
 
-    public boolean isPastDue(Instant now) {
+    private boolean isPastDue(Instant now) {
         return !expiresAt.isAfter(now);
     }
 

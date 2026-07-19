@@ -36,11 +36,7 @@ public class ProductReadModelService {
             condition = "T(com.techora.catalog.projection.cache.ProductListingCachePolicy).isCacheable(#filter, #pageable)"
     )
     public PageResponse<ProductView> searchPublicProducts(ProductFilter filter, Pageable pageable) {
-        Page<ProductReadModelEntity> products = repository.searchPublicProducts(
-                ProductStatus.ACTIVE,
-                filter.getCategoryId(),
-                filter.getKeyword(),
-                pageable);
+        Page<ProductReadModelEntity> products = findPublicProducts(filter, pageable);
 
         return new PageResponse<>(
                 products.getContent().stream()
@@ -53,8 +49,23 @@ public class ProductReadModelService {
         );
     }
 
+    private Page<ProductReadModelEntity> findPublicProducts(ProductFilter filter, Pageable pageable) {
+        if (filter.hasKeyword()) {
+            return repository.searchPublicProductsByKeyword(
+                    ProductStatus.ACTIVE,
+                    filter.getCategoryId(),
+                    filter.getKeyword(),
+                    pageable);
+        }
+
+        return repository.searchPublicProducts(
+                ProductStatus.ACTIVE,
+                filter.getCategoryId(),
+                pageable);
+    }
+
     @Transactional(readOnly = true)
-    @Cacheable(cacheNames = CacheNames.PRODUCT_DETAIL_BY_SLUG, key = "#slug")
+    @Cacheable(cacheNames = CacheNames.PRODUCT_DETAIL_BY_SLUG, key = "#slug", sync = true)
     public ProductView getPublicProductBySlug(String slug) {
         return repository.findBySlugAndStatusAndCategoryActiveTrue(slug, ProductStatus.ACTIVE)
                 .map(mapper::toView)

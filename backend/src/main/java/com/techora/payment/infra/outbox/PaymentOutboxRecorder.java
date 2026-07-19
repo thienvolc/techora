@@ -73,6 +73,7 @@ public class PaymentOutboxRecorder {
                 .topic(paymentEventsTopic)
                 .messageKey(orderId.toString())
                 .eventVersion(eventVersion)
+                .occurredAt(payload.occurredAt())
                 .headers(OutboxHeaders.of(PaymentOutboxHeaders.values()))
                 .data(payload)
                 .build();

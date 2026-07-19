@@ -37,7 +37,7 @@ public class IdempotencyKeyEntity {
     @Column(nullable = false, length = 20)
     private IdempotencyStatus status;
 
-    @Column(name = "response_payload", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "response_payload", columnDefinition = "TEXT")
     private String responsePayload;
 
     @Column(name = "expires_at", nullable = false)
@@ -63,8 +63,8 @@ public class IdempotencyKeyEntity {
         this.expiresAt = expiresAt;
     }
 
-    public boolean isExpired() {
-        return expiresAt.isBefore(Instant.now());
+    public boolean isExpired(Instant now) {
+        return expiresAt.isBefore(now);
     }
 
     public boolean isCompleted() {
@@ -78,19 +78,6 @@ public class IdempotencyKeyEntity {
     public boolean matches(IdempotencyOperation operation, String requestHash) {
         return this.operation == operation && this.requestHash.equals(requestHash);
     }
-
-    public void markProcessing(IdempotencyOperation operation,
-                               String idempotencyKey,
-                               Instant now,
-                               Instant expiresAt) {
-
-        this.operation = operation;
-        this.idempotencyKey = idempotencyKey;
-        this.updatedAt = now;
-        this.status = IdempotencyStatus.PROCESSING;
-        this.expiresAt = expiresAt;
-    }
-
 
     public static IdempotencyKeyEntity processing(UUID userId,
                                                   String idempotencyKey,
@@ -117,9 +104,4 @@ public class IdempotencyKeyEntity {
         this.updatedAt = updatedAt;
     }
 
-    public void markFailed(String responsePayload, Instant updatedAt) {
-        this.status = IdempotencyStatus.FAILED;
-        this.responsePayload = responsePayload;
-        this.updatedAt = updatedAt;
-    }
 }

@@ -9,6 +9,7 @@ import com.techora.idempotency.context.IdempotencyRequestContextFactory;
 import com.techora.idempotency.service.IdempotencyResponseCodec;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -17,6 +18,7 @@ public class IdempotencyCommandExecutor {
     private final IdempotencyKeyStore keyStore;
     private final IdempotencyResponseCodec responseCodec;
 
+    @Transactional
     public <T> T execute(IdempotencyCommand<T> command,
                          IdempotentCommandHandler<T> handler) {
 
@@ -37,13 +39,8 @@ public class IdempotencyCommandExecutor {
 
     private <T> T executeAndComplete(IdempotencyKeyEntity key,
                                      IdempotentCommandHandler<T> handler) {
-        try {
-            T response = handler.handle();
-            keyStore.complete(key, response);
-            return response;
-        } catch (RuntimeException ex) {
-            keyStore.fail(key, ex);
-            throw ex;
-        }
+        T response = handler.handle();
+        keyStore.complete(key, response);
+        return response;
     }
 }

@@ -46,7 +46,7 @@ public class OutboxStateUpdater {
 
         for (OutboxRelayOutcome outcome : outcomes) {
             if (!updatedIdSet.contains(outcome.eventId())) {
-                processMetricsAndLogs(outcome, Operation.MARK_PUBLISHED, lockedBy);
+                recordLostOwnership(outcome, Operation.MARK_PUBLISHED, lockedBy);
                 continue;
             }
             outboxMetrics.recordPublished(outcome.eventType());
@@ -59,7 +59,7 @@ public class OutboxStateUpdater {
         for (int i = 0; i < updateCounts.length; i++) {
             OutboxRelayOutcome outcome = outcomes.get(i);
             if (updateCounts[i] == 0) {
-                processMetricsAndLogs(outcome, Operation.SCHEDULE_RETRY, lockedBy);
+                recordLostOwnership(outcome, Operation.SCHEDULE_RETRY, lockedBy);
                 continue;
             }
             outboxMetrics.recordRetryScheduled(outcome.eventType());
@@ -72,16 +72,18 @@ public class OutboxStateUpdater {
         for (int i = 0; i < updateCounts.length; i++) {
             OutboxRelayOutcome outcome = outcomes.get(i);
             if (updateCounts[i] == 0) {
-                processMetricsAndLogs(outcome, Operation.MARK_FAILED, lockedBy);
+                recordLostOwnership(outcome, Operation.MARK_FAILED, lockedBy);
                 continue;
             }
             outboxMetrics.recordTerminalFailure(outcome.eventType());
         }
     }
 
-    private void processMetricsAndLogs(OutboxRelayOutcome outcome,
-                                       Operation operation,
-                                       String lockedBy) {
+    private void recordLostOwnership(OutboxRelayOutcome outcome,
+                                     Operation operation,
+                                     String lockedBy) {
+
+        outboxMetrics.recordLostOwnership(outcome.eventType(), operation.getValue());
 
         log.warn(
                 "Outbox relay outcome was not applied. " +
@@ -98,9 +100,9 @@ public class OutboxStateUpdater {
     @Getter
     @AllArgsConstructor
     enum Operation {
-        MARK_PUBLISHED("markUpdated"),
-        SCHEDULE_RETRY("scheduleRetry"),
-        MARK_FAILED("markFailed");
+        MARK_PUBLISHED("mark_published"),
+        SCHEDULE_RETRY("schedule_retry"),
+        MARK_FAILED("mark_failed");
 
         final String value;
     }

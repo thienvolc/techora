@@ -3,6 +3,7 @@ package com.techora.payment.infra.persistence;
 import com.techora.payment.domain.entity.PaymentAttempt;
 import com.techora.payment.domain.valueobject.PaymentAttemptStatus;
 import com.techora.payment.domain.valueobject.PaymentProvider;
+import com.techora.payment.domain.valueobject.PaymentReconciliationReason;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -80,6 +81,10 @@ public class PaymentAttemptJpaEntity {
     @Column(name = "reconciliation_resolved_at")
     private Instant reconciliationResolvedAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "reconciliation_reason", length = 60)
+    private PaymentReconciliationReason reconciliationReason;
+
     @Column(name = "reconciliation_resolution_note", columnDefinition = "TEXT")
     private String reconciliationResolutionNote;
 
@@ -109,6 +114,7 @@ public class PaymentAttemptJpaEntity {
                 .failedAt(attempt.getFailedAt())
                 .expiredAt(attempt.getExpiredAt())
                 .reconciliationResolvedAt(attempt.getReconciliationResolvedAt())
+                .reconciliationReason(attempt.getReconciliationReason())
                 .reconciliationResolutionNote(attempt.getReconciliationNote())
                 .createdAt(attempt.getCreatedAt())
                 .updatedAt(attempt.getUpdatedAt())
@@ -135,6 +141,7 @@ public class PaymentAttemptJpaEntity {
                 .failedAt(failedAt)
                 .expiredAt(expiredAt)
                 .reconciliationResolvedAt(reconciliationResolvedAt)
+                .reconciliationReason(reconciliationReason)
                 .reconciliationNote(reconciliationResolutionNote)
                 .createdAt(createdAt)
                 .updatedAt(updatedAt)

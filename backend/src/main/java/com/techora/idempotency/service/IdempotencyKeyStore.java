@@ -24,6 +24,7 @@ public class IdempotencyKeyStore {
 
     @Transactional
     public IdempotencyKeyEntity acquire(IdempotencyRequestContext<?> context) {
+        acquireTransactionLock(context);
         return keyRepository
                 .findLockedByUserIdAndIdempotencyKey(
                         context.userId(),
@@ -33,16 +34,18 @@ public class IdempotencyKeyStore {
                 .orElseGet(() -> createProcessingKey(context));
     }
 
+    private void acquireTransactionLock(IdempotencyRequestContext<?> context) {
+        keyRepository.acquireTransactionLock(lockKey(context));
+    }
+
+    private String lockKey(IdempotencyRequestContext<?> context) {
+        return context.userId() + ":" + context.idempotencyKey();
+    }
+
     @Transactional
     public void complete(IdempotencyKeyEntity key, Object response) {
         IdempotencyKeyEntity managedKey = getForUpdateOrThrow(key.getId());
         managedKey.markCompleted(responseCodec.serialize(response), now());
-    }
-
-    @Transactional
-    public void fail(IdempotencyKeyEntity key, Throwable error) {
-        IdempotencyKeyEntity managedKey = getForUpdateOrThrow(key.getId());
-        managedKey.markFailed(error.getClass().getSimpleName(), now());
     }
 
     private IdempotencyKeyEntity getForUpdateOrThrow(UUID keyId) {
@@ -51,12 +54,15 @@ public class IdempotencyKeyStore {
 
     private IdempotencyKeyEntity resolveExisting(IdempotencyKeyEntity existingKey,
                                                  IdempotencyRequestContext<?> context) {
+        if (existingKey.isExpired(now())) {
+            throw new BusinessException(ResponseCode.IDEMPOTENCY_KEY_EXPIRED);
+        }
 
         if (!existingKey.matches(context.operation(), context.requestHash())) {
             throw new BusinessException(ResponseCode.IDEMPOTENCY_KEY_CONFLICT);
         }
 
-        if (existingKey.isCompleted() && !existingKey.isExpired()) {
+        if (existingKey.isCompleted()) {
             return existingKey;
         }
 
@@ -64,14 +70,7 @@ public class IdempotencyKeyStore {
             throw new BusinessException(ResponseCode.IDEMPOTENCY_REQUEST_PROCESSING);
         }
 
-        existingKey.markProcessing(
-                context.operation(),
-                context.requestHash(),
-                now(),
-                expirationPolicy.expiresAt(context.operation())
-        );
-
-        return keyRepository.save(existingKey);
+        throw new BusinessException(ResponseCode.IDEMPOTENCY_REQUEST_PROCESSING);
     }
 
     private IdempotencyKeyEntity createProcessingKey(IdempotencyRequestContext<?> context) {

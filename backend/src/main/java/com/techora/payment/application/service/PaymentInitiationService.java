@@ -34,7 +34,7 @@ public class PaymentInitiationService {
     }
 
     private PaymentDetails reuseOrCreateAttempt(CreatePaymentCommand command, Payment payment) {
-        validateCanCreatePaymentAttempt(payment);
+        ensurePaymentAcceptsNewAttempt(payment);
         PaymentAttempt attempt = paymentAttemptCreator.getOrCreatePendingAttempt(
                 payment,
                 command.provider()
@@ -53,8 +53,8 @@ public class PaymentInitiationService {
         return paymentMapper.toDetails(payment, attempt);
     }
 
-    private void validateCanCreatePaymentAttempt(Payment payment) {
-        if (!payment.canCreateAttempt()) {
+    private void ensurePaymentAcceptsNewAttempt(Payment payment) {
+        if (!payment.acceptsNewAttempt()) {
             throw new BusinessException(ResponseCode.PAYMENT_ALREADY_FINALIZED);
         }
     }

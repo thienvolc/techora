@@ -9,6 +9,8 @@ import com.techora.payment.application.usecase.InitiateVnPayPaymentUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.UUID;
+
 @Component
 @RequiredArgsConstructor
 public class PaymentInitiationPortAdapter implements PaymentInitiationPort {
@@ -21,13 +23,17 @@ public class PaymentInitiationPortAdapter implements PaymentInitiationPort {
                 initiateVnPayPaymentUseCase.execute(new InitiateVnPayPaymentCommand(
                         command.userId(),
                         command.orderId(),
-                        command.idempotencyKey(),
-                        command.ipAddress()
+                        command.ipAddress(),
+                        paymentInitiationKey(command.orderId())
                 ));
         return new InitiatedOrderPayment(
                 paymentSession.paymentId(),
                 paymentSession.paymentUrl(),
                 paymentSession.expiresAt()
         );
+    }
+
+    private String paymentInitiationKey(UUID orderId) {
+        return "order-payment-" + orderId;
     }
 }

@@ -64,13 +64,15 @@ public class PaymentWebhookProcessor {
         log.info("Amount mismatched for attempt {}. Expect: {}, Actual: {}",
                 attempt.getId(), attempt.getAmount(), evidence.amount());
 
-        attempt.markReconciliationRequired(evidence);
+        PaymentReconciliationReason reason = PaymentReconciliationReason.AMOUNT_MISMATCHED;
+
+        attempt.markReconciliationRequired(evidence, reason);
         paymentAttemptRepository.save(attempt);
 
         payment.markReconciliationRequired(evidence.receivedAt());
         paymentRepository.save(payment);
 
-        paymentEventPublisher.publish(new PaymentReconciliationRequiredEvent(attempt, PaymentReconciliationReason.AMOUNT_MISMATCHED));
+        paymentEventPublisher.publish(new PaymentReconciliationRequiredEvent(attempt, reason));
     }
 
     private void applyFailure(PaymentAttempt attempt, ProviderPaymentEvidence evidence) {
@@ -104,19 +106,21 @@ public class PaymentWebhookProcessor {
     }
 
     private void requireReconciliation(Payment payment, PaymentAttempt attempt, ProviderPaymentEvidence evidence) {
-        attempt.markReconciliationRequired(evidence);
+        PaymentReconciliationReason reason = determineReconciliationReason(payment, attempt, evidence.receivedAt());
+
+        attempt.markReconciliationRequired(evidence, reason);
         paymentAttemptRepository.save(attempt);
 
         payment.markReconciliationRequired(evidence.receivedAt());
         paymentRepository.save(payment);
 
-        PaymentReconciliationReason reason = determineReconciliationReason(payment, attempt);
         paymentEventPublisher.publish(new PaymentReconciliationRequiredEvent(attempt, reason));
     }
 
-    private PaymentReconciliationReason determineReconciliationReason(Payment payment, PaymentAttempt attempt) {
-        Instant receivedAt = attempt.getProviderResultReceivedAt();
-        if (attempt.isExpired(receivedAt)) {
+    private PaymentReconciliationReason determineReconciliationReason(Payment payment,
+                                                                       PaymentAttempt attempt,
+                                                                       Instant receivedAt) {
+        if (attempt.isPendingPastDue(receivedAt) || attempt.isExpiredStatus()) {
             return PaymentReconciliationReason.LATE_SUCCESS_AFTER_EXPIRED;
         }
         return payment.reconciliationReasonForSuccessfulProviderResult(receivedAt);

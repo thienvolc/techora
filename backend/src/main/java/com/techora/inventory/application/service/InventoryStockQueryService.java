@@ -20,15 +20,13 @@ public class InventoryStockQueryService {
 
     @Transactional(readOnly = true)
     public int getQuantityOnHand(UUID productId) {
-        return inventoryItemRepository.findByProductId(productId)
-                .map(InventoryItemEntity::getQuantityOnHand)
+        return inventoryItemRepository.findQuantityOnHandByProductId(productId)
                 .orElse(0);
     }
 
     @Transactional(readOnly = true)
     public int getAvailableQuantity(UUID productId) {
-        return inventoryItemRepository.findByProductId(productId)
-                .map(InventoryItemEntity::availableQuantity)
+        return inventoryItemRepository.findAvailableQuantityByProductId(productId)
                 .orElse(0);
     }
 

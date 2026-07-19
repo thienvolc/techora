@@ -18,12 +18,22 @@ public interface ProductReadModelRepository extends JpaRepository<ProductReadMod
             where product.status = :status
               and product.categoryActive = true
               and (:categoryId is null or product.categoryId = :categoryId)
-              and (:keyword is null or lower(product.name) like lower(concat('%', :keyword, '%')))
             """)
     Page<ProductReadModelEntity> searchPublicProducts(@Param("status") ProductStatus status,
                                                       @Param("categoryId") UUID categoryId,
-                                                      @Param("keyword") String keyword,
                                                       Pageable pageable);
+
+    @Query("""
+            select product from ProductReadModelEntity product
+            where product.status = :status
+              and product.categoryActive = true
+              and (:categoryId is null or product.categoryId = :categoryId)
+              and lower(product.name) like lower(concat('%', :keyword, '%'))
+            """)
+    Page<ProductReadModelEntity> searchPublicProductsByKeyword(@Param("status") ProductStatus status,
+                                                               @Param("categoryId") UUID categoryId,
+                                                               @Param("keyword") String keyword,
+                                                               Pageable pageable);
 
     Optional<ProductReadModelEntity> findBySlugAndStatusAndCategoryActiveTrue(
             String slug,

@@ -19,6 +19,20 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItemEnti
 
     Optional<InventoryItemEntity> findByProductId(UUID productId);
 
+    @Query("""
+            select item.quantityOnHand
+            from InventoryItemEntity item
+            where item.productId = :productId
+            """)
+    Optional<Integer> findQuantityOnHandByProductId(@Param("productId") UUID productId);
+
+    @Query("""
+            select item.quantityOnHand - item.reservedQuantity
+            from InventoryItemEntity item
+            where item.productId = :productId
+            """)
+    Optional<Integer> findAvailableQuantityByProductId(@Param("productId") UUID productId);
+
     List<InventoryItemEntity> findByProductIdIn(Collection<UUID> productIds);
 
     @Query("select item.productId from InventoryItemEntity item")

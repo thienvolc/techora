@@ -10,6 +10,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.stereotype.Service;
 
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 
@@ -50,7 +51,7 @@ public class OutboxEventBulkClaimer {
                 .addValue("processingStatus", OutboxEventStatus.PROCESSING.name())
                 .addValue("pendingStatus", OutboxEventStatus.PENDING.name())
                 .addValue("eventTypes", eventTypeNames)
-                .addValue("now", now)
+                .addValue("now", Timestamp.from(now))
                 .addValue("lockedBy", lockedBy)
                 .addValue("batchSize", batchSize);
 

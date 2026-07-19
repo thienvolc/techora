@@ -14,6 +14,8 @@ public class OutboxMetrics {
     private static final String RETRY_SCHEDULED_METRIC = "techora.outbox.retry_scheduled";
     private static final String FAILED_TERMINAL_METRIC = "techora.outbox.failed_terminal";
     private static final String STALE_RELEASED_METRIC = "techora.outbox.stale_processing_released";
+    private static final String LOST_OWNERSHIP_METRIC = "techora.outbox.relay.lost_ownership";
+    private static final String OPERATION_TAG = "operation";
 
     private final MeterRegistry meterRegistry;
 
@@ -31,5 +33,13 @@ public class OutboxMetrics {
 
     public void recordStaleReleased(int count) {
         meterRegistry.counter(STALE_RELEASED_METRIC).increment(count);
+    }
+
+    public void recordLostOwnership(OutboxEventType eventType, String operation) {
+        meterRegistry.counter(
+                LOST_OWNERSHIP_METRIC,
+                EVENT_TYPE_TAG, eventType.name(),
+                OPERATION_TAG, operation
+        ).increment();
     }
 }

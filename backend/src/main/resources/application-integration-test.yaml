@@ -1,0 +1,57 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+  kafka:
+    consumer:
+      group-id: techora-integration-test
+      auto-offset-reset: earliest
+
+app:
+  cache:
+    redis-bypass:
+      enabled: true
+      failure-threshold: 3
+      cooldown: 5s
+  events:
+    mode: local
+    fallback-on-kafka-error: true
+  outbox:
+    worker-delay-ms: 600000
+    housekeeping-delay-ms: 600000
+    relay:
+      delay-ms: 600000
+      batch-size: 100
+      max-batches-per-run: 10
+      event-types: PAYMENT_CONFIRMED,PAYMENT_FAILED,PAYMENT_RECONCILIATION_REQUIRED
+    retry:
+      max-retries: 3
+      max-backoff-seconds: 1
+      step-backoff-seconds: 1
+      processing-timeout-seconds: 30
+  runtime:
+    instance-id: techora-integration-test
+
+inventory:
+  reservation-reconciliation-job:
+    fixed-delay-ms: 600000
+
+order:
+  payment-window-expiration-job:
+    fixed-delay-ms: 600000
+
+payment:
+  attempt-expiration-job:
+    fixed-delay-ms: 600000
+  window-timeout-minutes: 60
+  providers:
+    vnpay:
+      terminal-code: DEMO
+      hash-secret: DEMO
+      pay-url: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+      return-url: http://localhost:8080/api/v1/payments/vnpay/return/%s
+      payment-timeout-minutes: 15
